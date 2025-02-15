@@ -1,11 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'screens/connection_screen.dart';
+import 'services/network_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // 创建 ProviderContainer 以便在 runApp 之前初始化服务
+  final container = ProviderContainer();
+  
+  // 初始化网络服务
+  await container.read(networkServiceProvider).initialize();
+
   runApp(
-    const ProviderScope(
-      child: MainApp(),
+    UncontrolledProviderScope(
+      container: container,
+      child: const MainApp(),
     ),
   );
 }
