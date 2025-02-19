@@ -29,6 +29,62 @@ class MainScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 
+                // Current Device Info
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.dark300,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    children: [
+                      // Title and Status
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '本机设备',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.green,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      // Device Info
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.computer,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '我的电脑',
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                              Text(
+                                '192.168.1.88',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
                 // Search Bar
                 TextField(
                   decoration: InputDecoration(
