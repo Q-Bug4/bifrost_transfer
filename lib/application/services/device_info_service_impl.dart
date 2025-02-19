@@ -37,25 +37,32 @@ class DeviceInfoServiceImpl implements DeviceInfoService {
     }
 
     try {
-      // Try to get IP using network_info_plus
-      String? ip = await _networkInfo.getWifiIP();
-      
-      // If that fails, try alternative method
-      if (ip == null || ip.isEmpty) {
-        final interfaces = await NetworkInterface.list(
-          type: InternetAddressType.IPv4,
-          includeLinkLocal: false,
-        );
+      final interfaces = await NetworkInterface.list(
+        type: InternetAddressType.IPv4,
+        includeLinkLocal: false,
+      );
 
-        for (var interface in interfaces) {
-          for (var addr in interface.addresses) {
-            if (!addr.isLoopback && addr.type == InternetAddressType.IPv4) {
-              ip = addr.address;
-              break;
-            }
-          }
-          if (ip != null) break;
+      String? ip;
+      
+      // First try: Look for interfaces with real network names
+      for (var interface in interfaces) {
+        // Skip virtual and loopback interfaces
+        if (_isVirtualInterface(interface.name)) {
+          continue;
         }
+
+        for (var addr in interface.addresses) {
+          if (_isValidLocalIP(addr.address)) {
+            ip = addr.address;
+            break;
+          }
+        }
+        if (ip != null) break;
+      }
+
+      // If no IP found, try network_info_plus as fallback
+      if (ip == null) {
+        ip = await _networkInfo.getWifiIP();
       }
 
       // Update cache
@@ -66,6 +73,35 @@ class DeviceInfoServiceImpl implements DeviceInfoService {
     } catch (e) {
       return 'Unknown IP';
     }
+  }
+
+  bool _isVirtualInterface(String name) {
+    final virtualPatterns = [
+      RegExp(r'vEthernet', caseSensitive: false),
+      RegExp(r'VMware', caseSensitive: false),
+      RegExp(r'VirtualBox', caseSensitive: false),
+      RegExp(r'WSL', caseSensitive: false),
+      RegExp(r'Hyper-V', caseSensitive: false),
+    ];
+
+    return virtualPatterns.any((pattern) => pattern.hasMatch(name));
+  }
+
+  bool _isValidLocalIP(String ip) {
+    // Skip link-local and special purpose addresses
+    if (ip.startsWith('169.254.') || // Link-local addresses
+        ip.startsWith('172.') ||     // Docker and other virtual networks often use these
+        ip == '127.0.0.1') {         // Loopback
+      return false;
+    }
+
+    // Common local network ranges
+    final localPatterns = [
+      RegExp(r'^192\.168\.\d{1,3}\.\d{1,3}$'),
+      RegExp(r'^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$'),
+    ];
+
+    return localPatterns.any((pattern) => pattern.hasMatch(ip));
   }
 
   @override
