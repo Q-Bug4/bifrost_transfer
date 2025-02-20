@@ -25,16 +25,20 @@ class FileTransferItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.dark300,
-        borderRadius: BorderRadius.circular(8),
+      decoration: const BoxDecoration(
+        color: Color(0xFF3D3D3D), // dark-300
+        borderRadius: BorderRadius.all(Radius.circular(8)),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(fileIcon, color: AppColors.primary),
-              const SizedBox(width: 12),
+              Icon(
+                fileIcon,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

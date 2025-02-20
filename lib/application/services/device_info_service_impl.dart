@@ -13,7 +13,7 @@ class DeviceInfoServiceImpl implements DeviceInfoService {
   Future<String> getDeviceName() async {
     try {
       if (Platform.isWindows) {
-        return Platform.environment['COMPUTERNAME'] ?? 'Windows Device';
+        return _getWindowsDeviceName();
       } else if (Platform.isLinux) {
         final result = await Process.run('hostname', []);
         return (result.stdout as String).trim().isNotEmpty 
@@ -24,6 +24,17 @@ class DeviceInfoServiceImpl implements DeviceInfoService {
       }
     } catch (e) {
       return 'Unknown Device';
+    }
+  }
+
+  String _getWindowsDeviceName() {
+    try {
+      final result = Process.runSync('hostname', []);
+      String? name = result.stdout.toString().trim();
+      name ??= 'Windows Device';
+      return name;
+    } catch (e) {
+      return 'Windows Device';
     }
   }
 
