@@ -1,3 +1,12 @@
+# 全局规则
+1. 输出的markdown文档中，代码块需要缩进2格后再输出，例如
+<markdown样例>
+代码：
+    ```dart
+    print('Hello, World!');
+    ```
+</markdown样例>
+
 # 文档输出要求
 ## 技术设计文档
 ### 1. 目的
