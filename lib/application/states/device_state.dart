@@ -100,7 +100,7 @@ class DeviceState extends ChangeNotifier {
       return;
     }
 
-    // 不再使用 then 等待结果，而是直接显示对话框
+    // 显示配对码对话框
     showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -108,25 +108,16 @@ class DeviceState extends ChangeNotifier {
         pairingCode: _pairingCode!,
         isInitiator: _isInitiator,
       ),
-    );
-
-    // 如果是接收方，才需要处理对话框的结果
-    if (!_isInitiator) {
-      showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => PairingCodeDialog(
-          pairingCode: _pairingCode!,
-          isInitiator: _isInitiator,
-        ),
-      ).then((confirmed) async {
+    ).then((confirmed) async {
+      // 只有接收方需要处理确认/拒绝结果
+      if (!_isInitiator && _currentDevice != null) {
         if (confirmed == true) {
           await confirmPairing(_currentDevice!);
-        } else {
+        } else if (confirmed == false) {
           await rejectPairing(_currentDevice!);
         }
-      });
-    }
+      }
+    });
   }
 
   // 添加全局key用于获取context
@@ -231,10 +222,29 @@ class DeviceState extends ChangeNotifier {
       _error = null;
       _currentDevice = device;
       _isInitiator = true;
+      _pairingCode = pairingCode;
       notifyListeners();
+
+      // 先显示配对码对话框
+      _showPairingDialog();
+
+      // 然后开始配对流程
       await _pairingService.startPairing(device, pairingCode: pairingCode);
+      
+      if (_error != null) {
+        // 如果配对过程中出现错误，关闭对话框
+        final context = _navigatorKey.currentContext;
+        if (context != null) {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        }
+      }
     } catch (e) {
       _setError('设备连接失败: $e');
+      // 发生错误时关闭对话框
+      final context = _navigatorKey.currentContext;
+      if (context != null) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
     }
   }
 

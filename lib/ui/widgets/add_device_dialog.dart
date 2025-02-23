@@ -57,6 +57,9 @@ class _AddDeviceDialogState extends State<AddDeviceDialog> {
       // 生成配对码
       final pairingCode = deviceState.generatePairingCode();
 
+      // 关闭添加设备对话框
+      Navigator.of(context).pop();
+
       // 开始配对流程
       await deviceState.selectDevice(newDevice, pairingCode: pairingCode);
       if (deviceState.error != null) {
@@ -66,21 +69,6 @@ class _AddDeviceDialogState extends State<AddDeviceDialog> {
         });
         return;
       }
-
-      if (!mounted) return;
-
-      // 显示配对码对话框，不再等待结果
-      showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => PairingCodeDialog(
-          pairingCode: pairingCode,
-          isInitiator: true,
-        ),
-      );
-
-      // 关闭添加设备对话框
-      Navigator.of(context).pop();
     } catch (e) {
       setState(() {
         _errorMessage = '添加设备失败：$e';
