@@ -100,7 +100,6 @@ class DeviceState extends ChangeNotifier {
       return;
     }
 
-    // 显示配对码对话框
     showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -109,13 +108,10 @@ class DeviceState extends ChangeNotifier {
         isInitiator: _isInitiator,
       ),
     ).then((confirmed) async {
-      // 只有接收方需要处理确认/拒绝结果
-      if (!_isInitiator && _currentDevice != null) {
-        if (confirmed == true) {
-          await confirmPairing(_currentDevice!);
-        } else if (confirmed == false) {
-          await rejectPairing(_currentDevice!);
-        }
+      if (confirmed == true) {
+        await confirmPairing(_currentDevice!);
+      } else {
+        await rejectPairing(_currentDevice!);
       }
     });
   }
@@ -142,44 +138,20 @@ class DeviceState extends ChangeNotifier {
     );
   }
 
-  // 处理配对拒绝
-  void _handlePairingRejected(NetworkMessage message) {
-    try {
-      final reason = message.data['message'] as String? ?? '对方拒绝了配对请求';
-      
-      // 先关闭对话框
-      final context = _navigatorKey.currentContext;
-      if (context != null) {
-        Navigator.of(context).popUntil((route) => route.isFirst);
-      }
-
-      // 然后显示错误消息
-      _setError(reason);
-      _showSnackBar(reason, isError: true);
-
-      // 清理状态
-      _currentDevice = null;
-      _pairingCode = null;
-      notifyListeners();
-    } catch (e) {
-      _logger.severe('Error handling pairing rejection: $e');
-      _setError('处理配对拒绝失败: $e');
-    }
-  }
-
   // 处理配对完成
   void _handlePairingCompleted(NetworkMessage message) async {
     try {
       if (_currentDevice != null) {
-        // 先关闭对话框
-        final context = _navigatorKey.currentContext;
-        if (context != null) {
-          Navigator.of(context).popUntil((route) => route.isFirst);
-        }
-
         // 添加到已配对设备列表
         await addPairedDevice(_currentDevice!);
         _showSnackBar('设备配对成功：${_currentDevice!.deviceName}');
+
+        // 关闭所有对话框
+        final context = _navigatorKey.currentContext;
+        if (context != null) {
+          // 关闭所有对话框直到回到设备列表页面
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        }
       }
       _currentDevice = null;
       _pairingCode = null;
@@ -188,6 +160,29 @@ class DeviceState extends ChangeNotifier {
       _logger.severe('Error handling pairing completion: $e');
       _setError('处理配对完成失败: $e');
       _showSnackBar('配对失败：$e', isError: true);
+    }
+  }
+
+  // 处理配对拒绝
+  void _handlePairingRejected(NetworkMessage message) {
+    try {
+      final reason = message.data['message'] as String? ?? '对方拒绝了配对请求';
+      _setError(reason);
+      _showSnackBar(reason, isError: true);
+
+      // 关闭所有对话框
+      final context = _navigatorKey.currentContext;
+      if (context != null) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+
+      // 清理状态
+      _currentDevice = null;
+      _pairingCode = null;
+      notifyListeners();
+    } catch (e) {
+      _logger.severe('Error handling pairing rejection: $e');
+      _setError('处理配对拒绝失败: $e');
     }
   }
 
@@ -222,29 +217,10 @@ class DeviceState extends ChangeNotifier {
       _error = null;
       _currentDevice = device;
       _isInitiator = true;
-      _pairingCode = pairingCode;
       notifyListeners();
-
-      // 先显示配对码对话框
-      _showPairingDialog();
-
-      // 然后开始配对流程
       await _pairingService.startPairing(device, pairingCode: pairingCode);
-      
-      if (_error != null) {
-        // 如果配对过程中出现错误，关闭对话框
-        final context = _navigatorKey.currentContext;
-        if (context != null) {
-          Navigator.of(context).popUntil((route) => route.isFirst);
-        }
-      }
     } catch (e) {
       _setError('设备连接失败: $e');
-      // 发生错误时关闭对话框
-      final context = _navigatorKey.currentContext;
-      if (context != null) {
-        Navigator.of(context).popUntil((route) => route.isFirst);
-      }
     }
   }
 
