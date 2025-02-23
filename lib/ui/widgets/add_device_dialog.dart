@@ -69,8 +69,8 @@ class _AddDeviceDialogState extends State<AddDeviceDialog> {
 
       if (!mounted) return;
 
-      // 显示配对码对话框
-      final bool? confirmed = await showDialog<bool>(
+      // 显示配对码对话框，不再等待结果
+      showDialog<bool>(
         context: context,
         barrierDismissible: false,
         builder: (context) => PairingCodeDialog(
@@ -79,20 +79,8 @@ class _AddDeviceDialogState extends State<AddDeviceDialog> {
         ),
       );
 
-      if (!mounted) return;
-
-      if (confirmed == true) {
-        await deviceState.confirmPairing(newDevice);
-        if (deviceState.error == null) {
-          Navigator.of(context).pop();
-        } else {
-          setState(() {
-            _errorMessage = deviceState.error;
-          });
-        }
-      } else {
-        await deviceState.rejectPairing(newDevice);
-      }
+      // 关闭添加设备对话框
+      Navigator.of(context).pop();
     } catch (e) {
       setState(() {
         _errorMessage = '添加设备失败：$e';

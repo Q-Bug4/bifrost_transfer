@@ -226,6 +226,16 @@ class NetworkService {
     // 设置心跳超时处理
     void handleHeartbeatTimeout() {
       _logger.warning('Heartbeat timeout for $ipAddress');
+      
+      // 发送配对拒绝消息
+      final message = NetworkMessage(
+        type: 'pairing_rejected',
+        deviceId: 'local',
+        data: {'message': '连接超时，请重试'},
+      );
+      sendMessage(ipAddress, message);
+
+      // 断开连接
       disconnectFromDevice(ipAddress);
     }
 
