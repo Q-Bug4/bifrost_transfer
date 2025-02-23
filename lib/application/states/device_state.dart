@@ -163,7 +163,7 @@ class DeviceState extends ChangeNotifier {
     }
   }
 
-  // 处理配对拒绝
+  // 处理配对被拒绝
   void _handlePairingRejected(NetworkMessage message) {
     try {
       final reason = message.data['message'] as String? ?? '对方拒绝了配对请求';
@@ -176,7 +176,6 @@ class DeviceState extends ChangeNotifier {
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
 
-      // 清理状态
       _currentDevice = null;
       _pairingCode = null;
       notifyListeners();

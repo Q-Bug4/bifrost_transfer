@@ -231,11 +231,10 @@ class NetworkService {
       final message = NetworkMessage(
         type: 'pairing_rejected',
         deviceId: 'local',
-        data: {'message': '连接超时，请重试'},
+        data: {'message': '连接超时，配对失败'},
       );
-      sendMessage(ipAddress, message);
+      _messageController.add(message);
 
-      // 断开连接
       disconnectFromDevice(ipAddress);
     }
 
