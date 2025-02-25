@@ -1,223 +1,186 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bifrost 局域网文件传输助手</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-tailwind.config = {
-theme: {
-extend: {
-colors: {
-primary: '#6366F1',
-secondary: '#4F46E5',
-dark: {
-100: '#1E1E1E',
-200: '#2D2D2D',
-300: '#3D3D3D'
-}
-},
-borderRadius: {
-'none': '0px',
-'sm': '4px',
-DEFAULT: '8px',
-'md': '12px',
-'lg': '16px',
-'xl': '20px',
-'2xl': '24px',
-'3xl': '32px',
-'full': '9999px',
-'button': '8px'
-}
-}
-}
-}
-</script>
-<style>
-body {
-background-color: #1E1E1E;
-color: #FFFFFF;
-min-height: 1024px;
-}
-.device-list::-webkit-scrollbar {
-width: 6px;
-}
-.device-list::-webkit-scrollbar-track {
-background: #2D2D2D;
-}
-.device-list::-webkit-scrollbar-thumb {
-background: #3D3D3D;
-border-radius: 3px;
-}
-input::-webkit-outer-spin-button,
-input::-webkit-inner-spin-button {
--webkit-appearance: none;
-margin: 0;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bifrost 虹桥 - 跨平台文件传输工具</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1E88E5',
+                        secondary: '#4CAF50'
+                    },
+                    borderRadius: {
+                        'none': '0px',
+                        'sm': '4px',
+                        DEFAULT: '8px',
+                        'md': '12px',
+                        'lg': '16px',
+                        'xl': '20px',
+                        '2xl': '24px',
+                        '3xl': '32px',
+                        'full': '9999px',
+                        'button': '8px'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            min-height: 1024px;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+        }
+        .container {
+            width: 1440px;
+            margin: 0 auto;
+        }
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .drop-zone {
+            border: 2px dashed #3a3a3a;
+            transition: all 0.3s ease;
+        }
+        .drop-zone:hover {
+            border-color: #1E88E5;
+            background-color: rgba(30, 136, 229, 0.1);
+        }
+    </style>
 </head>
-<body>
-<div class="flex min-h-screen">
-<!-- 左侧设备列表 -->
-<div class="w-80 bg-dark-200 p-4 flex flex-col border-r border-dark-300">
-<div class="flex items-center justify-between mb-6">
-<h1 class="text-2xl font-['Pacifico']">logo</h1>
-</div>
-<div class="bg-dark-300 p-4 mb-4 !rounded-button">
-<div class="flex items-center justify-between mb-2">
-<div class="text-sm font-medium">本机设备</div>
-<div class="w-2 h-2 rounded-full bg-green-500"></div>
-</div>
-<div class="flex items-center mt-2">
-<i class="fab fa-windows text-lg w-8 h-8 flex items-center justify-center text-primary"></i>
-<div class="ml-3">
-<div class="text-sm font-medium">我的电脑</div>
-<div class="text-xs text-gray-400">192.168.1.88</div>
-</div>
-</div>
-</div>
-<div class="relative mb-4">
-<input type="text" placeholder="搜索设备或IP地址" class="w-full bg-dark-300 px-4 py-2 pl-10 text-sm border-none !rounded-button">
-<i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-</div>
-<div class="device-list flex-1 overflow-y-auto space-y-2">
-<div class="bg-dark-300 p-3 !rounded-button flex items-center justify-between">
-<div class="flex items-center">
-<i class="fab fa-windows text-lg w-8 h-8 flex items-center justify-center text-primary"></i>
-<div class="ml-3">
-<div class="text-sm font-medium">王总的工作站</div>
-<div class="text-xs text-gray-400">192.168.1.100</div>
-</div>
-</div>
-<div class="w-2 h-2 rounded-full bg-green-500"></div>
-</div>
-<div class="bg-dark-300 p-3 !rounded-button flex items-center justify-between">
-<div class="flex items-center">
-<i class="fab fa-android text-lg w-8 h-8 flex items-center justify-center text-primary"></i>
-<div class="ml-3">
-<div class="text-sm font-medium">刘经理的手机</div>
-<div class="text-xs text-gray-400">192.168.1.101</div>
-</div>
-</div>
-<div class="w-2 h-2 rounded-full bg-gray-500"></div>
-</div>
-<div class="bg-dark-300 p-3 !rounded-button flex items-center justify-between">
-<div class="flex items-center">
-<i class="fab fa-linux text-lg w-8 h-8 flex items-center justify-center text-primary"></i>
-<div class="ml-3">
-<div class="text-sm font-medium">开发服务器</div>
-<div class="text-xs text-gray-400">192.168.1.102</div>
-</div>
-</div>
-<div class="w-2 h-2 rounded-full bg-gray-500"></div>
-</div>
-</div>
-<button class="mt-4 bg-primary text-white px-4 py-2 w-full flex items-center justify-center !rounded-button">
-<i class="fas fa-plus mr-2"></i>
-添加设备
-</button>
-</div>
-<!-- 中间文件传输区域 -->
-<div class="flex-1 p-6 bg-dark-100">
-<div class="bg-dark-200 p-6 !rounded-button h-full">
-<div class="flex items-center justify-between mb-6">
-<div class="flex items-center">
-<i class="fab fa-windows text-xl text-primary"></i>
-<span class="ml-3 text-lg font-medium">王总的工作站</span>
-<span class="ml-3 text-sm text-gray-400">已连接</span>
-</div>
-<button class="bg-dark-300 text-sm px-4 py-2 !rounded-button">
-<i class="fas fa-cog mr-2"></i>
-设置
-</button>
-</div>
-<div class="border-2 border-dashed border-dark-300 !rounded-button p-8 mb-6 text-center">
-<i class="fas fa-cloud-upload-alt text-4xl text-primary mb-4"></i>
-<p class="text-gray-400">拖拽文件到此处，或点击选择文件</p>
-</div>
-<div class="space-y-4">
-<div class="bg-dark-300 p-4 !rounded-button">
-<div class="flex items-center justify-between mb-3">
-<div class="flex items-center">
-<i class="far fa-file-pdf text-red-500 text-xl w-8 h-8 flex items-center justify-center"></i>
-<div class="ml-3">
-<div class="text-sm font-medium">项目需求文档.pdf</div>
-<div class="text-xs text-gray-400">15.2 MB</div>
-</div>
-</div>
-<div class="flex items-center space-x-2">
-<span class="text-xs text-gray-400">12.8 MB/s</span>
-<button class="text-gray-400 hover:text-white">
-<i class="fas fa-pause"></i>
-</button>
-<button class="text-gray-400 hover:text-white">
-<i class="fas fa-times"></i>
-</button>
-</div>
-</div>
-<div class="w-full bg-dark-100 !rounded-button h-1">
-<div class="bg-primary h-full !rounded-button" style="width: 75%"></div>
-</div>
-</div>
-<div class="bg-dark-300 p-4 !rounded-button">
-<div class="flex items-center justify-between mb-3">
-<div class="flex items-center">
-<i class="far fa-file-image text-blue-500 text-xl w-8 h-8 flex items-center justify-center"></i>
-<div class="ml-3">
-<div class="text-sm font-medium">产品设计稿.psd</div>
-<div class="text-xs text-gray-400">256 MB</div>
-</div>
-</div>
-<div class="flex items-center space-x-2">
-<span class="text-xs text-gray-400">等待中</span>
-<button class="text-gray-400 hover:text-white">
-<i class="fas fa-times"></i>
-</button>
-</div>
-</div>
-<div class="w-full bg-dark-100 !rounded-button h-1">
-<div class="bg-gray-500 h-full !rounded-button" style="width: 0%"></div>
-</div>
-</div>
-</div>
-</div>
-</div>
-<!-- 右侧文本传输区域 -->
-<div class="w-96 bg-dark-200 p-4 border-l border-dark-300">
-<div class="flex items-center justify-between mb-4">
-<h2 class="text-lg font-medium">文本传输</h2>
-<button class="text-gray-400 hover:text-white">
-<i class="fas fa-history"></i>
-</button>
-</div>
-<div class="space-y-4 mb-4 h-[calc(100vh-180px)] overflow-y-auto">
-<div class="bg-dark-300 p-3 !rounded-button">
-<div class="flex items-center justify-between mb-2">
-<span class="text-xs text-gray-400">发送至：王总的工作站</span>
-<span class="text-xs text-gray-400">10:30</span>
-</div>
-<p class="text-sm">会议链接：https://meeting.example.com/123456</p>
-</div>
-<div class="bg-dark-300 p-3 !rounded-button">
-<div class="flex items-center justify-between mb-2">
-<span class="text-xs text-gray-400">接收自：刘经理的手机</span>
-<span class="text-xs text-gray-400">10:25</span>
-</div>
-<p class="text-sm">请查看最新的销售数据报表，我们需要在下午 3 点前完成分析。</p>
-</div>
-</div>
-<div class="relative">
-<textarea class="w-full bg-dark-300 p-3 !rounded-button resize-none h-20 border-none" placeholder="输入要传输的文本内容..."></textarea>
-<button class="absolute right-3 bottom-3 bg-primary text-white px-4 py-1 !rounded-button text-sm whitespace-nowrap">
-发送
-</button>
-</div>
-</div>
-</div>
+<body class="bg-gray-900">
+    <div class="container mx-auto px-6">
+        <header class="py-4 flex items-center justify-between border-b border-gray-700">
+            <div class="flex items-center">
+                <h1 class="text-3xl font-['Pacifico'] text-primary">Bifrost</h1>
+                <span class="ml-2 text-gray-400">虹桥</span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="bg-gray-800 px-4 py-2 rounded-lg flex items-center">
+                    <span class="text-gray-400">本机 IP:</span>
+                    <span class="ml-2 text-white">192.168.1.100</span>
+                    <button class="ml-2 text-primary hover:text-primary/80 !rounded-button">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+                <div class="bg-gray-800 px-4 py-2 rounded-lg flex items-center">
+                    <span class="text-gray-400">设备名称:</span>
+                    <span class="ml-2 text-white">开发者工作站</span>
+                </div>
+                <div class="bg-red-900/20 text-red-400 px-4 py-2 rounded-lg flex items-center">
+                    <i class="fas fa-circle text-xs mr-2"></i>
+                    <span>未连接</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="py-8">
+            <div class="bg-gray-800 rounded-lg p-6 mb-6">
+                <div class="flex items-center space-x-4 mb-6">
+                    <input type="text" placeholder="请输入目标设备 IP 地址" class="flex-1 bg-gray-700 border-none text-white px-4 py-2 rounded-lg focus:ring-2 focus:ring-primary">
+                    <button class="bg-primary hover:bg-primary/90 text-white px-6 py-2 !rounded-button whitespace-nowrap flex items-center">
+                        <i class="fas fa-link mr-2"></i>
+                        连接设备
+                    </button>
+                </div>
+                <div class="mb-6">
+                    <div class="tabs flex space-x-4 border-b border-gray-700">
+                        <button class="px-4 py-2 text-primary border-b-2 border-primary">文件传输</button>
+                        <button class="px-4 py-2 text-gray-400 hover:text-white">文本传输</button>
+                    </div>
+                </div>
+
+                <div class="drop-zone h-64 rounded-lg flex flex-col items-center justify-center">
+                    <i class="fas fa-cloud-upload-alt text-4xl text-gray-500 mb-4"></i>
+                    <p class="text-gray-400 mb-2">拖拽文件到此处，或</p>
+                    <button class="bg-gray-700 hover:bg-gray-600 text-white px-6 py-2 !rounded-button whitespace-nowrap">
+                        选择文件
+                    </button>
+                </div>
+
+                <div class="mt-6">
+                    <h3 class="text-lg font-medium mb-4">传输列表</h3>
+                    <div class="space-y-4">
+                        <div class="bg-gray-700 p-4 rounded-lg">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-white">设计文档.pdf</span>
+                                <span class="text-gray-400">2.5MB / 10MB</span>
+                            </div>
+                            <div class="w-full bg-gray-600 rounded-full h-2">
+                                <div class="bg-primary h-2 rounded-full" style="width: 25%"></div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-700 p-4 rounded-lg">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-white">源代码.zip</span>
+                                <span class="text-gray-400">15MB / 50MB</span>
+                            </div>
+                            <div class="w-full bg-gray-600 rounded-full h-2">
+                                <div class="bg-primary h-2 rounded-full" style="width: 30%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h3 class="text-lg font-medium mb-4">传输历史</h3>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between py-2 border-b border-gray-700">
+                        <div class="flex items-center">
+                            <i class="fas fa-file-alt text-gray-400 mr-3"></i>
+                            <div>
+                                <p class="text-white">项目演示.pptx</p>
+                                <p class="text-sm text-gray-400">发送至 192.168.1.101</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="text-green-400 mr-4">已完成</span>
+                            <span class="text-gray-400">20MB</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between py-2 border-b border-gray-700">
+                        <div class="flex items-center">
+                            <i class="fas fa-file-code text-gray-400 mr-3"></i>
+                            <div>
+                                <p class="text-white">代码备份.zip</p>
+                                <p class="text-sm text-gray-400">接收自 192.168.1.102</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="text-green-400 mr-4">已完成</span>
+                            <span class="text-gray-400">150MB</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="py-6 border-t border-gray-700">
+            <div class="flex justify-between items-center">
+                <div class="text-gray-400">
+                    <p>连接安全可靠 | 传输速度快捷</p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button class="text-gray-400 hover:text-white !rounded-button">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                    <button class="text-gray-400 hover:text-white !rounded-button">
+                        <i class="fas fa-question-circle"></i>
+                    </button>
+                </div>
+            </div>
+        </footer>
+    </div>
 </body>
 </html>
