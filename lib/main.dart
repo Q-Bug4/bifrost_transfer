@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:provider/provider.dart';
 import 'application/services/connection_service.dart';
-import 'application/services/connection_service_impl.dart';
 import 'application/states/connection_state_notifier.dart';
 import 'ui/screens/home_screen.dart';
+import 'infrastructure/di/service_locator.dart';
 
 void main() {
   // 初始化日志
@@ -12,6 +12,9 @@ void main() {
   Logger.root.onRecord.listen((record) {
     debugPrint('${record.level.name}: ${record.time}: ${record.message}');
   });
+
+  // 初始化服务定位器
+  setupServiceLocator();
 
   runApp(const MyApp());
 }
@@ -25,7 +28,7 @@ class MyApp extends StatelessWidget {
       providers: [
         // 注册连接服务
         Provider<ConnectionService>(
-          create: (_) => ConnectionServiceImpl(),
+          create: (_) => serviceLocator<ConnectionService>(),
         ),
         // 注册连接状态管理器
         ChangeNotifierProxyProvider<ConnectionService, ConnectionStateNotifier>(

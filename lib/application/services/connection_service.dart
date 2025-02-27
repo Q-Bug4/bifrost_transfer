@@ -35,4 +35,15 @@ abstract class ConnectionService {
   
   /// 连接请求流，用于监听接收到的连接请求
   Stream<Map<String, dynamic>> get connectionRequestStream;
+  
+  /// 模拟接收连接请求（仅用于测试）
+  /// 
+  /// [deviceIp] 模拟设备的IP地址
+  /// [deviceName] 模拟设备的名称
+  /// [pairingCode] 模拟的配对码
+  Future<void> simulateIncomingConnectionRequest(
+    String deviceIp,
+    String deviceName,
+    String pairingCode,
+  );
 } 
