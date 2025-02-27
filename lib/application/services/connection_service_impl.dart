@@ -5,6 +5,8 @@ import 'package:logging/logging.dart';
 import '../models/connection_model.dart';
 import '../models/device_info_model.dart';
 import 'connection_service.dart';
+import '../../infrastructure/utils/network_utils.dart';
+import 'dart:io';
 
 /// 连接服务实现类
 class ConnectionServiceImpl implements ConnectionService {
@@ -39,14 +41,29 @@ class ConnectionServiceImpl implements ConnectionService {
       return _localDeviceInfo!;
     }
     
-    // 模拟获取本地设备信息
-    // 在实际应用中，这里应该调用平台特定的API获取设备名称和IP地址
-    _localDeviceInfo = DeviceInfoModel(
-      deviceName: '开发者工作站', // 实际应用中应该获取真实设备名称
-      ipAddress: '192.168.1.100', // 实际应用中应该获取真实IP地址
-    );
-    
-    return _localDeviceInfo!;
+    try {
+      // 使用NetworkUtils获取真实的设备名称和IP地址
+      final deviceName = await NetworkUtils.getDeviceName();
+      final ipAddress = await NetworkUtils.getLocalIpAddress();
+      
+      _localDeviceInfo = DeviceInfoModel(
+        deviceName: deviceName,
+        ipAddress: ipAddress,
+      );
+      
+      _logger.info('获取本地设备信息: 设备名称=$deviceName, IP地址=$ipAddress');
+      return _localDeviceInfo!;
+    } catch (e) {
+      _logger.severe('获取本地设备信息失败: $e');
+      
+      // 获取失败时使用默认值
+      _localDeviceInfo = DeviceInfoModel(
+        deviceName: '未知设备',
+        ipAddress: '127.0.0.1',
+      );
+      
+      return _localDeviceInfo!;
+    }
   }
 
   @override
@@ -131,15 +148,27 @@ class ConnectionServiceImpl implements ConnectionService {
 
   /// 检查设备是否可达
   /// 
-  /// 在实际应用中，这里应该发送ping请求或尝试建立TCP连接
+  /// 尝试建立TCP连接到目标设备的指定端口，检查设备是否可达
   Future<bool> _checkDeviceReachable(String ip) async {
-    // 模拟网络延迟
-    await Future.delayed(const Duration(seconds: 2));
+    _logger.info('检查设备可达性: $ip');
     
-    // 模拟设备可达性检查
-    // 在实际应用中，这里应该根据实际网络请求结果返回
-    // 这里简单地假设所有IP地址都是可达的
-    return true;
+    try {
+      // 尝试连接到目标设备的指定端口
+      // 使用应用的通信端口，这里假设为8000
+      const int port = 8000;
+      
+      // 设置连接超时时间为3秒
+      final socket = await Socket.connect(ip, port, 
+          timeout: const Duration(seconds: 3));
+      
+      // 连接成功，关闭socket
+      await socket.close();
+      _logger.info('设备可达: $ip:$port');
+      return true;
+    } catch (e) {
+      _logger.warning('设备不可达: $ip, 错误: $e');
+      return false;
+    }
   }
 
   @override
