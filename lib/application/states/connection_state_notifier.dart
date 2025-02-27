@@ -95,7 +95,7 @@ class ConnectionStateNotifier extends ChangeNotifier {
       return;
     }
     
-    final initiatorIp = _pendingConnectionRequest!['initiatorIp'] as String;
+    final initiatorIp = _pendingConnectionRequest!['deviceIp'] as String;
     final pairingCode = _pendingConnectionRequest!['pairingCode'] as String;
     
     try {
@@ -117,7 +117,7 @@ class ConnectionStateNotifier extends ChangeNotifier {
       return;
     }
     
-    final initiatorIp = _pendingConnectionRequest!['initiatorIp'] as String;
+    final initiatorIp = _pendingConnectionRequest!['deviceIp'] as String;
     
     try {
       await _connectionService.rejectConnection(initiatorIp);

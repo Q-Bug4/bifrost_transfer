@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../../application/models/connection_model.dart';
 import '../../application/services/connection_service_impl.dart';
@@ -111,11 +112,50 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           const SizedBox(height: 16),
           // 连接表单
           const ConnectionFormWidget(),
-          const SizedBox(height: 16),
-          // 选项卡
-          _buildTabs(),
         ],
       ),
+    );
+  }
+
+  /// 构建主体
+  Widget _buildBody() {
+    return Column(
+      children: [
+        // 测试按钮（仅在开发环境中显示）
+        if (kDebugMode)
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: ElevatedButton(
+              onPressed: _simulateIncomingConnectionRequest,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amber,
+              ),
+              child: const Text('模拟接收连接请求（测试）'),
+            ),
+          ),
+        
+        // 选项卡
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: _buildTabs(),
+        ),
+        
+        // 选项卡内容
+        Expanded(
+          child: PageView(
+            controller: _tabController,
+            onPageChanged: (index) {
+              setState(() {
+                _currentTabIndex = index;
+              });
+            },
+            children: [
+              _buildFileTransferTab(),
+              _buildTextTransferTab(),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -178,22 +218,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ],
         ),
       ),
-    );
-  }
-
-  /// 构建主体
-  Widget _buildBody() {
-    return PageView(
-      controller: _tabController,
-      onPageChanged: (index) {
-        setState(() {
-          _currentTabIndex = index;
-        });
-      },
-      children: [
-        _buildFileTransferTab(),
-        _buildTextTransferTab(),
-      ],
     );
   }
 
@@ -272,6 +296,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final connectionStateNotifier = Provider.of<ConnectionStateNotifier>(context, listen: false);
     
     // 监听连接请求
+    connectionStateNotifier.addListener(() {
+      // 如果有待处理的连接请求，显示对话框
+      if (connectionStateNotifier.pendingConnectionRequest != null) {
+        // 确保对话框只显示一次
+        if (!_isConnectionRequestDialogShowing) {
+          _showConnectionRequestDialog(connectionStateNotifier);
+        }
+      }
+    });
+    
+    // 初始检查是否有待处理的连接请求
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (connectionStateNotifier.pendingConnectionRequest != null) {
         _showConnectionRequestDialog(connectionStateNotifier);
@@ -279,25 +314,36 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     });
   }
 
+  /// 是否正在显示连接请求对话框
+  bool _isConnectionRequestDialogShowing = false;
+
   /// 显示连接请求对话框
   void _showConnectionRequestDialog(ConnectionStateNotifier connectionStateNotifier) {
+    if (_isConnectionRequestDialogShowing) return;
+    
     final request = connectionStateNotifier.pendingConnectionRequest!;
+    _isConnectionRequestDialogShowing = true;
     
     showDialog(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: false, // 禁止点击背景关闭对话框
       builder: (context) => ConnectionRequestDialog(
-        initiatorIp: request['initiatorIp'],
-        initiatorName: request['initiatorName'],
+        initiatorIp: request['deviceIp'],
+        initiatorName: request['deviceName'],
         pairingCode: request['pairingCode'],
         onAccept: () {
+          _isConnectionRequestDialogShowing = false;
           connectionStateNotifier.acceptConnectionRequest();
         },
         onReject: () {
+          _isConnectionRequestDialogShowing = false;
           connectionStateNotifier.rejectConnectionRequest();
         },
       ),
-    );
+    ).then((_) {
+      // 对话框关闭后重置标志
+      _isConnectionRequestDialogShowing = false;
+    });
   }
 
   /// 模拟接收连接请求
