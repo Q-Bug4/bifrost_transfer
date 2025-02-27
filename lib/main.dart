@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
+import 'package:provider/provider.dart';
+import 'application/services/connection_service.dart';
+import 'application/services/connection_service_impl.dart';
+import 'application/states/connection_state_notifier.dart';
+import 'ui/screens/home_screen.dart';
 
 void main() {
   // 初始化日志
@@ -16,15 +21,39 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Bifrost Transfer',
-      home: Scaffold(
-        appBar: AppBar(
-          title: const Text('Bifrost Transfer'),
+    return MultiProvider(
+      providers: [
+        // 注册连接服务
+        Provider<ConnectionService>(
+          create: (_) => ConnectionServiceImpl(),
         ),
-        body: const Center(
-          child: Text('Welcome to Bifrost Transfer'),
+        // 注册连接状态管理器
+        ChangeNotifierProxyProvider<ConnectionService, ConnectionStateNotifier>(
+          create: (context) => ConnectionStateNotifier(
+            Provider.of<ConnectionService>(context, listen: false),
+          ),
+          update: (context, connectionService, previous) => 
+            previous ?? ConnectionStateNotifier(connectionService),
         ),
+      ],
+      child: MaterialApp(
+        title: 'Bifrost Transfer',
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: Colors.blue,
+            brightness: Brightness.light,
+          ),
+          useMaterial3: true,
+        ),
+        darkTheme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: Colors.blue,
+            brightness: Brightness.dark,
+          ),
+          useMaterial3: true,
+        ),
+        themeMode: ThemeMode.system,
+        home: const HomeScreen(),
       ),
     );
   }
