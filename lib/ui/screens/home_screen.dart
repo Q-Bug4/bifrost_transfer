@@ -8,6 +8,7 @@ import '../widgets/connection_form_widget.dart';
 import '../widgets/connection_request_dialog.dart';
 import '../widgets/connection_status_widget.dart';
 import '../widgets/device_info_widget.dart';
+import '../../application/services/connection_service.dart';
 
 /// 主页面
 class HomeScreen extends StatefulWidget {
@@ -295,21 +296,34 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void _listenForConnectionRequests() {
     final connectionStateNotifier = Provider.of<ConnectionStateNotifier>(context, listen: false);
     
+    print('开始监听连接请求');
+    
     // 监听连接请求
     connectionStateNotifier.addListener(() {
+      print('ConnectionStateNotifier状态变化');
       // 如果有待处理的连接请求，显示对话框
       if (connectionStateNotifier.pendingConnectionRequest != null) {
+        print('检测到待处理连接请求: ${connectionStateNotifier.pendingConnectionRequest}');
         // 确保对话框只显示一次
         if (!_isConnectionRequestDialogShowing) {
+          print('显示连接请求对话框');
           _showConnectionRequestDialog(connectionStateNotifier);
+        } else {
+          print('连接请求对话框已经在显示中');
         }
+      } else {
+        print('没有待处理的连接请求');
       }
     });
     
     // 初始检查是否有待处理的连接请求
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      print('初始检查待处理连接请求');
       if (connectionStateNotifier.pendingConnectionRequest != null) {
+        print('初始检查发现待处理连接请求');
         _showConnectionRequestDialog(connectionStateNotifier);
+      } else {
+        print('初始检查未发现待处理连接请求');
       }
     });
   }
@@ -348,7 +362,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   /// 模拟接收连接请求
   void _simulateIncomingConnectionRequest() {
-    final connectionService = Provider.of<ConnectionServiceImpl>(context, listen: false);
+    final connectionService = Provider.of<ConnectionService>(context, listen: false);
     
     connectionService.simulateIncomingConnectionRequest(
       '192.168.1.101',

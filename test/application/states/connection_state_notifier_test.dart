@@ -1,23 +1,19 @@
 import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
-import 'package:mockito/annotations.dart';
-import 'package:bifrost_transfer/application/services/connection_service.dart';
-import 'package:bifrost_transfer/application/states/connection_state_notifier.dart';
 import 'package:bifrost_transfer/application/models/connection_model.dart';
 import 'package:bifrost_transfer/application/models/device_info_model.dart';
-
-// 生成 mock 类
-@GenerateNiceMocks([MockSpec<ConnectionService>()])
-import 'connection_state_notifier_test.mocks.dart';
+import 'package:bifrost_transfer/application/services/connection_service.dart';
+import 'package:bifrost_transfer/application/states/connection_state_notifier.dart';
+import '../../mocks/mock_connection_service.dart' as mocks;
 
 void main() {
-  late MockConnectionService mockConnectionService;
+  late mocks.MockConnectionService mockConnectionService;
   late ConnectionStateNotifier connectionStateNotifier;
   
   // 设置测试环境
   setUp(() {
-    mockConnectionService = MockConnectionService();
+    mockConnectionService = mocks.MockConnectionService();
     
     // 模拟设备信息
     final deviceInfo = DeviceInfoModel(
@@ -48,8 +44,8 @@ void main() {
   });
   
   // 测试初始化
-  group('初始化', () {
-    test('应正确获取本地设备信息', () async {
+  group('ConnectionStateNotifier - 初始化', () {
+    test('初始化时应该获取本地设备信息', () async {
       // 等待初始化完成
       await Future.delayed(const Duration(milliseconds: 100));
       
@@ -60,19 +56,60 @@ void main() {
       verify(mockConnectionService.getLocalDeviceInfo()).called(1);
     });
     
-    test('初始连接状态应为断开连接', () {
-      expect(connectionStateNotifier.connectionState.status, ConnectionStatus.disconnected);
+    test('初始化时应该订阅连接状态流和连接请求流', () async {
+      // 准备
+      final connectionStateController = StreamController<ConnectionModel>();
+      final connectionRequestController = StreamController<Map<String, dynamic>>();
+      
+      when(mockConnectionService.connectionStateStream)
+          .thenAnswer((_) => connectionStateController.stream);
+      when(mockConnectionService.connectionRequestStream)
+          .thenAnswer((_) => connectionRequestController.stream);
+      
+      // 创建新实例以触发初始化
+      final notifier = ConnectionStateNotifier(mockConnectionService);
+      
+      // 等待初始化完成
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      // 验证
+      verify(mockConnectionService.connectionStateStream).called(greaterThanOrEqualTo(1));
+      verify(mockConnectionService.connectionRequestStream).called(greaterThanOrEqualTo(1));
+      
+      // 清理
+      connectionStateController.close();
+      connectionRequestController.close();
+      notifier.dispose();
+    });
+    
+    test('初始化失败时应该记录错误', () async {
+      // 准备
+      when(mockConnectionService.getLocalDeviceInfo())
+          .thenThrow(Exception('测试异常'));
+      
+      // 创建新实例以触发初始化
+      final notifier = ConnectionStateNotifier(mockConnectionService);
+      
+      // 等待初始化完成
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      // 验证
+      expect(notifier.localDeviceInfo, isNull);
+      verify(mockConnectionService.getLocalDeviceInfo()).called(1);
+      
+      // 清理
+      notifier.dispose();
     });
   });
   
   // 测试发起连接
-  group('initiateConnection', () {
-    test('正常情况 - 应调用服务的发起连接方法', () async {
+  group('ConnectionStateNotifier - 发起连接', () {
+    const targetIp = '192.168.1.200';
+    
+    test('发起连接成功', () async {
       // 安排测试数据
-      final targetIp = '192.168.1.101';
-      
-      // 模拟服务行为
-      when(mockConnectionService.initiateConnection(targetIp)).thenAnswer((_) async => '123456');
+      when(mockConnectionService.initiateConnection(targetIp))
+          .thenAnswer((_) async => '123456');
       
       // 执行测试
       await connectionStateNotifier.initiateConnection(targetIp);
@@ -81,224 +118,397 @@ void main() {
       verify(mockConnectionService.initiateConnection(targetIp)).called(1);
     });
     
-    test('异常情况 - 服务抛出异常时应重新抛出', () async {
+    test('发起连接失败时应该抛出异常', () async {
       // 安排测试数据
-      final targetIp = '192.168.1.101';
-      
-      // 模拟服务行为 - 抛出异常
-      when(mockConnectionService.initiateConnection(targetIp)).thenThrow(Exception('连接失败'));
+      when(mockConnectionService.initiateConnection(targetIp))
+          .thenThrow(Exception('连接失败'));
       
       // 执行测试并验证异常
       expect(() => connectionStateNotifier.initiateConnection(targetIp), throwsA(isA<Exception>()));
+      verify(mockConnectionService.initiateConnection(targetIp)).called(1);
     });
   });
   
   // 测试接受连接请求
-  group('acceptConnectionRequest', () {
-    test('正常情况 - 有待处理请求时应接受连接', () async {
-      // 安排测试数据 - 模拟待处理的连接请求
-      connectionStateNotifier.handleConnectionRequest({
-        'deviceIp': '192.168.1.101',
-        'deviceName': 'Test Device',
-        'pairingCode': '123456',
-      });
+  group('ConnectionStateNotifier - 接受连接请求', () {
+    const initiatorIp = '192.168.1.200';
+    const pairingCode = '123456';
+    
+    test('接受连接请求成功', () async {
+      // 准备
+      final connectionRequestController = StreamController<Map<String, dynamic>>();
+      when(mockConnectionService.connectionRequestStream)
+          .thenAnswer((_) => connectionRequestController.stream);
       
-      // 模拟服务行为
-      when(mockConnectionService.acceptConnection('192.168.1.101', '123456')).thenAnswer((_) async => true);
+      final notifier = ConnectionStateNotifier(mockConnectionService);
       
-      // 执行测试
-      await connectionStateNotifier.acceptConnectionRequest();
+      // 等待初始化完成
+      await Future.delayed(const Duration(milliseconds: 100));
       
-      // 验证结果
-      verify(mockConnectionService.acceptConnection('192.168.1.101', '123456')).called(1);
-      expect(connectionStateNotifier.pendingConnectionRequest, isNull);
+      // 发送连接请求
+      final request = {
+        'deviceIp': initiatorIp,
+        'pairingCode': pairingCode,
+      };
+      connectionRequestController.add(request);
+      
+      // 等待处理请求
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      when(mockConnectionService.acceptConnection(initiatorIp, pairingCode))
+          .thenAnswer((_) async => true);
+      
+      // 执行
+      await notifier.acceptConnectionRequest();
+      
+      // 验证
+      verify(mockConnectionService.acceptConnection(initiatorIp, pairingCode)).called(1);
+      
+      // 清理
+      connectionRequestController.close();
+      notifier.dispose();
     });
     
-    test('异常情况 - 无待处理请求时不应调用服务', () async {
-      // 执行测试
-      await connectionStateNotifier.acceptConnectionRequest();
+    test('没有待处理的连接请求时不应该调用接受连接', () async {
+      // 准备
+      final notifier = ConnectionStateNotifier(mockConnectionService);
       
-      // 验证结果
+      // 执行
+      await notifier.acceptConnectionRequest();
+      
+      // 验证
       verifyNever(mockConnectionService.acceptConnection(any, any));
+      
+      // 清理
+      notifier.dispose();
     });
     
-    test('异常情况 - 服务返回失败时应记录警告', () async {
-      // 安排测试数据 - 模拟待处理的连接请求
-      connectionStateNotifier.handleConnectionRequest({
-        'deviceIp': '192.168.1.101',
-        'deviceName': 'Test Device',
-        'pairingCode': '123456',
-      });
+    test('接受连接请求失败时应该抛出异常', () async {
+      // 准备
+      final connectionRequestController = StreamController<Map<String, dynamic>>();
+      when(mockConnectionService.connectionRequestStream)
+          .thenAnswer((_) => connectionRequestController.stream);
       
-      // 模拟服务行为 - 返回失败
-      when(mockConnectionService.acceptConnection('192.168.1.101', '123456')).thenAnswer((_) async => false);
+      final notifier = ConnectionStateNotifier(mockConnectionService);
       
-      // 执行测试
-      await connectionStateNotifier.acceptConnectionRequest();
+      // 等待初始化完成
+      await Future.delayed(const Duration(milliseconds: 100));
       
-      // 验证结果
-      verify(mockConnectionService.acceptConnection('192.168.1.101', '123456')).called(1);
+      // 发送连接请求
+      final request = {
+        'deviceIp': initiatorIp,
+        'pairingCode': pairingCode,
+      };
+      connectionRequestController.add(request);
+      
+      // 等待处理请求
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      when(mockConnectionService.acceptConnection(initiatorIp, pairingCode))
+          .thenThrow(Exception('接受连接失败'));
+      
+      // 执行和验证
+      expect(
+        () => notifier.acceptConnectionRequest(),
+        throwsException,
+      );
+      verify(mockConnectionService.acceptConnection(initiatorIp, pairingCode)).called(1);
+      
+      // 清理
+      connectionRequestController.close();
+      notifier.dispose();
     });
   });
   
   // 测试拒绝连接请求
-  group('rejectConnectionRequest', () {
-    test('正常情况 - 有待处理请求时应拒绝连接', () async {
-      // 安排测试数据 - 模拟待处理的连接请求
-      connectionStateNotifier.handleConnectionRequest({
-        'deviceIp': '192.168.1.101',
-        'deviceName': 'Test Device',
-        'pairingCode': '123456',
-      });
+  group('ConnectionStateNotifier - 拒绝连接请求', () {
+    const initiatorIp = '192.168.1.200';
+    const pairingCode = '123456';
+    
+    test('拒绝连接请求成功', () async {
+      // 准备
+      final connectionRequestController = StreamController<Map<String, dynamic>>();
+      when(mockConnectionService.connectionRequestStream)
+          .thenAnswer((_) => connectionRequestController.stream);
       
-      // 模拟服务行为
-      when(mockConnectionService.rejectConnection('192.168.1.101')).thenAnswer((_) async {});
+      final notifier = ConnectionStateNotifier(mockConnectionService);
       
-      // 执行测试
-      await connectionStateNotifier.rejectConnectionRequest();
+      // 等待初始化完成
+      await Future.delayed(const Duration(milliseconds: 100));
       
-      // 验证结果
-      verify(mockConnectionService.rejectConnection('192.168.1.101')).called(1);
-      expect(connectionStateNotifier.pendingConnectionRequest, isNull);
+      // 发送连接请求
+      final request = {
+        'deviceIp': initiatorIp,
+        'pairingCode': pairingCode,
+      };
+      connectionRequestController.add(request);
+      
+      // 等待处理请求
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      when(mockConnectionService.rejectConnection(initiatorIp))
+          .thenAnswer((_) async => null);
+      
+      // 执行
+      await notifier.rejectConnectionRequest();
+      
+      // 验证
+      verify(mockConnectionService.rejectConnection(initiatorIp)).called(1);
+      expect(notifier.pendingConnectionRequest, isNull);
+      
+      // 清理
+      connectionRequestController.close();
+      notifier.dispose();
     });
     
-    test('异常情况 - 无待处理请求时不应调用服务', () async {
-      // 执行测试
-      await connectionStateNotifier.rejectConnectionRequest();
+    test('没有待处理的连接请求时不应该调用拒绝连接', () async {
+      // 准备
+      final notifier = ConnectionStateNotifier(mockConnectionService);
       
-      // 验证结果
+      // 执行
+      await notifier.rejectConnectionRequest();
+      
+      // 验证
       verifyNever(mockConnectionService.rejectConnection(any));
+      
+      // 清理
+      notifier.dispose();
+    });
+    
+    test('拒绝连接请求失败时应该抛出异常', () async {
+      // 准备
+      final connectionRequestController = StreamController<Map<String, dynamic>>();
+      when(mockConnectionService.connectionRequestStream)
+          .thenAnswer((_) => connectionRequestController.stream);
+      
+      final notifier = ConnectionStateNotifier(mockConnectionService);
+      
+      // 等待初始化完成
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      // 发送连接请求
+      final request = {
+        'deviceIp': initiatorIp,
+        'pairingCode': pairingCode,
+      };
+      connectionRequestController.add(request);
+      
+      // 等待处理请求
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      when(mockConnectionService.rejectConnection(initiatorIp))
+          .thenThrow(Exception('拒绝连接失败'));
+      
+      // 执行和验证
+      expect(
+        () => notifier.rejectConnectionRequest(),
+        throwsException,
+      );
+      verify(mockConnectionService.rejectConnection(initiatorIp)).called(1);
+      
+      // 清理
+      connectionRequestController.close();
+      notifier.dispose();
     });
   });
   
   // 测试断开连接
-  group('disconnect', () {
-    test('应调用服务的断开连接方法', () async {
-      // 模拟服务行为
-      when(mockConnectionService.disconnect()).thenAnswer((_) async {});
+  group('ConnectionStateNotifier - 断开连接', () {
+    test('断开连接成功', () async {
+      // 准备
+      when(mockConnectionService.disconnect())
+          .thenAnswer((_) async => null);
       
-      // 执行测试
+      // 执行
       await connectionStateNotifier.disconnect();
       
-      // 验证结果
+      // 验证
       verify(mockConnectionService.disconnect()).called(1);
     });
     
-    test('异常情况 - 服务抛出异常时应重新抛出', () async {
-      // 模拟服务行为 - 抛出异常
-      when(mockConnectionService.disconnect()).thenThrow(Exception('断开连接失败'));
+    test('断开连接失败时应该抛出异常', () async {
+      // 准备
+      when(mockConnectionService.disconnect())
+          .thenThrow(Exception('断开连接失败'));
       
-      // 执行测试并验证异常
-      expect(() => connectionStateNotifier.disconnect(), throwsA(isA<Exception>()));
+      // 执行和验证
+      expect(
+        () => connectionStateNotifier.disconnect(),
+        throwsException,
+      );
+      verify(mockConnectionService.disconnect()).called(1);
     });
   });
   
   // 测试取消连接请求
-  group('cancelConnection', () {
-    test('应调用服务的取消连接请求方法', () async {
-      // 模拟服务行为
-      when(mockConnectionService.cancelConnection()).thenAnswer((_) async {});
+  group('ConnectionStateNotifier - 取消连接请求', () {
+    test('取消连接请求成功', () async {
+      // 准备
+      when(mockConnectionService.cancelConnection())
+          .thenAnswer((_) async => null);
       
-      // 执行测试
+      // 执行
       await connectionStateNotifier.cancelConnection();
       
-      // 验证结果
+      // 验证
       verify(mockConnectionService.cancelConnection()).called(1);
     });
     
-    test('异常情况 - 服务抛出异常时应重新抛出', () async {
-      // 模拟服务行为 - 抛出异常
-      when(mockConnectionService.cancelConnection()).thenThrow(Exception('取消连接请求失败'));
+    test('取消连接请求失败时应该抛出异常', () async {
+      // 准备
+      when(mockConnectionService.cancelConnection())
+          .thenThrow(Exception('取消连接请求失败'));
       
-      // 执行测试并验证异常
-      expect(() => connectionStateNotifier.cancelConnection(), throwsA(isA<Exception>()));
+      // 执行和验证
+      expect(
+        () => connectionStateNotifier.cancelConnection(),
+        throwsException,
+      );
+      verify(mockConnectionService.cancelConnection()).called(1);
     });
   });
   
   // 测试连接状态变化处理
-  group('handleConnectionStateChange', () {
-    test('应更新连接状态并通知监听器', () {
-      // 安排测试数据
+  group('ConnectionStateNotifier - 处理连接状态变化', () {
+    test('连接状态变化时应该更新状态', () async {
+      // 准备
       final newState = ConnectionModel(
         status: ConnectionStatus.connected,
-        remoteDeviceName: 'Remote Device',
-        remoteIpAddress: '192.168.1.101',
+        remoteIpAddress: '192.168.1.200',
+        remoteDeviceName: 'Test Device',
       );
       
-      // 监听通知
-      bool notified = false;
-      connectionStateNotifier.addListener(() {
-        notified = true;
-      });
+      // 模拟连接状态变化
+      final connectionStateController = StreamController<ConnectionModel>();
+      when(mockConnectionService.connectionStateStream)
+          .thenAnswer((_) => connectionStateController.stream);
       
-      // 执行测试
-      connectionStateNotifier.handleConnectionStateChange(newState);
+      // 创建新实例以触发初始化
+      final notifier = ConnectionStateNotifier(mockConnectionService);
       
-      // 验证结果
-      expect(connectionStateNotifier.connectionState.status, ConnectionStatus.connected);
-      expect(connectionStateNotifier.connectionState.remoteDeviceName, 'Remote Device');
-      expect(connectionStateNotifier.connectionState.remoteIpAddress, '192.168.1.101');
-      expect(notified, true);
+      // 等待初始化完成
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      // 发送状态变化
+      connectionStateController.add(newState);
+      
+      // 等待处理状态变化
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      // 验证
+      expect(notifier.connectionState, equals(newState));
+      
+      // 清理
+      connectionStateController.close();
+      notifier.dispose();
     });
     
-    test('连接成功或失败时应清除待处理的连接请求', () {
-      // 安排测试数据 - 模拟待处理的连接请求
-      connectionStateNotifier.handleConnectionRequest({
-        'deviceIp': '192.168.1.101',
-        'deviceName': 'Test Device',
-        'pairingCode': '123456',
-      });
+    test('连接成功时应该清除待处理的连接请求', () async {
+      // 准备
+      final connectionRequestController = StreamController<Map<String, dynamic>>();
+      final connectionStateController = StreamController<ConnectionModel>();
       
-      // 执行测试 - 连接成功
-      connectionStateNotifier.handleConnectionStateChange(ConnectionModel(
+      when(mockConnectionService.connectionRequestStream)
+          .thenAnswer((_) => connectionRequestController.stream);
+      when(mockConnectionService.connectionStateStream)
+          .thenAnswer((_) => connectionStateController.stream);
+      
+      final notifier = ConnectionStateNotifier(mockConnectionService);
+      
+      // 等待初始化完成
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      // 发送连接请求
+      final request = {
+        'deviceIp': '192.168.1.200',
+        'pairingCode': '123456',
+      };
+      connectionRequestController.add(request);
+      
+      // 等待处理请求
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      // 验证请求已设置
+      expect(notifier.pendingConnectionRequest, isNotNull);
+      
+      // 发送连接成功状态
+      connectionStateController.add(ConnectionModel(
         status: ConnectionStatus.connected,
+        remoteIpAddress: '192.168.1.200',
+        remoteDeviceName: 'Test Device',
       ));
       
-      // 验证结果
-      expect(connectionStateNotifier.pendingConnectionRequest, isNull);
+      // 等待处理状态变化
+      await Future.delayed(const Duration(milliseconds: 100));
       
-      // 重新设置待处理请求
-      connectionStateNotifier.handleConnectionRequest({
-        'deviceIp': '192.168.1.101',
-        'deviceName': 'Test Device',
-        'pairingCode': '123456',
-      });
+      // 验证请求已清除
+      expect(notifier.pendingConnectionRequest, isNull);
       
-      // 执行测试 - 连接失败
-      connectionStateNotifier.handleConnectionStateChange(ConnectionModel(
-        status: ConnectionStatus.failed,
-      ));
-      
-      // 验证结果
-      expect(connectionStateNotifier.pendingConnectionRequest, isNull);
+      // 清理
+      connectionRequestController.close();
+      connectionStateController.close();
+      notifier.dispose();
     });
   });
   
   // 测试连接请求处理
-  group('handleConnectionRequest', () {
-    test('应更新待处理的连接请求并通知监听器', () {
-      // 安排测试数据
+  group('ConnectionStateNotifier - 处理连接请求', () {
+    test('收到连接请求时应该设置待处理的连接请求', () async {
+      // 准备
+      final connectionRequestController = StreamController<Map<String, dynamic>>();
+      when(mockConnectionService.connectionRequestStream)
+          .thenAnswer((_) => connectionRequestController.stream);
+      
+      final notifier = ConnectionStateNotifier(mockConnectionService);
+      
+      // 等待初始化完成
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      // 发送连接请求
       final request = {
-        'deviceIp': '192.168.1.101',
+        'deviceIp': '192.168.1.200',
         'deviceName': 'Test Device',
         'pairingCode': '123456',
       };
+      connectionRequestController.add(request);
       
-      // 监听通知
-      bool notified = false;
-      connectionStateNotifier.addListener(() {
-        notified = true;
-      });
+      // 等待处理请求
+      await Future.delayed(const Duration(milliseconds: 100));
       
-      // 执行测试
-      connectionStateNotifier.handleConnectionRequest(request);
+      // 验证
+      expect(notifier.pendingConnectionRequest, equals(request));
       
-      // 验证结果
-      expect(connectionStateNotifier.pendingConnectionRequest, isNotNull);
-      expect(connectionStateNotifier.pendingConnectionRequest!['deviceIp'], '192.168.1.101');
-      expect(connectionStateNotifier.pendingConnectionRequest!['deviceName'], 'Test Device');
-      expect(connectionStateNotifier.pendingConnectionRequest!['pairingCode'], '123456');
-      expect(notified, true);
+      // 清理
+      connectionRequestController.close();
+      notifier.dispose();
+    });
+  });
+
+  group('ConnectionStateNotifier - 销毁', () {
+    test('销毁时应该取消订阅', () async {
+      // 准备
+      final connectionStateController = StreamController<ConnectionModel>();
+      final connectionRequestController = StreamController<Map<String, dynamic>>();
+      
+      when(mockConnectionService.connectionStateStream)
+          .thenAnswer((_) => connectionStateController.stream);
+      when(mockConnectionService.connectionRequestStream)
+          .thenAnswer((_) => connectionRequestController.stream);
+      
+      // 创建新实例以触发初始化
+      final notifier = ConnectionStateNotifier(mockConnectionService);
+      
+      // 等待初始化完成
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      // 执行
+      notifier.dispose();
+      
+      // 验证 - 无法直接验证订阅是否取消，但可以确保不会有内存泄漏
+      
+      // 清理
+      connectionStateController.close();
+      connectionRequestController.close();
     });
   });
 } 

@@ -74,8 +74,11 @@ class ConnectionStateNotifier extends ChangeNotifier {
 
   /// 处理连接请求
   void _handleConnectionRequest(Map<String, dynamic> request) {
+    _logger.info('收到连接请求: $request');
     _pendingConnectionRequest = request;
+    _logger.info('设置待处理连接请求: $_pendingConnectionRequest');
     notifyListeners();
+    _logger.info('通知监听器更新');
   }
 
   /// 发起连接
