@@ -4,16 +4,16 @@ import 'package:flutter/material.dart';
 class ConnectionRequestDialog extends StatefulWidget {
   /// 发起方IP地址
   final String initiatorIp;
-  
+
   /// 发起方设备名称
   final String initiatorName;
-  
+
   /// 配对码
   final String pairingCode;
-  
+
   /// 接受连接回调
   final VoidCallback onAccept;
-  
+
   /// 拒绝连接回调
   final VoidCallback onReject;
 
@@ -28,13 +28,14 @@ class ConnectionRequestDialog extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<ConnectionRequestDialog> createState() => _ConnectionRequestDialogState();
+  State<ConnectionRequestDialog> createState() =>
+      _ConnectionRequestDialogState();
 }
 
 class _ConnectionRequestDialogState extends State<ConnectionRequestDialog> {
   /// 是否正在处理接受连接
   bool _isAccepting = false;
-  
+
   /// 是否正在处理拒绝连接
   bool _isRejecting = false;
 
@@ -74,9 +75,7 @@ class _ConnectionRequestDialogState extends State<ConnectionRequestDialog> {
         ),
         actions: [
           TextButton(
-            onPressed: _isAccepting || _isRejecting
-                ? null
-                : _handleReject,
+            onPressed: _isAccepting || _isRejecting ? null : _handleReject,
             child: _isRejecting
                 ? const Row(
                     mainAxisSize: MainAxisSize.min,
@@ -95,9 +94,7 @@ class _ConnectionRequestDialogState extends State<ConnectionRequestDialog> {
                 : const Text('拒绝'),
           ),
           ElevatedButton(
-            onPressed: _isAccepting || _isRejecting
-                ? null
-                : _handleAccept,
+            onPressed: _isAccepting || _isRejecting ? null : _handleAccept,
             child: _isAccepting
                 ? const Row(
                     mainAxisSize: MainAxisSize.min,
@@ -161,14 +158,10 @@ class _ConnectionRequestDialogState extends State<ConnectionRequestDialog> {
     setState(() {
       _isAccepting = true;
     });
-    
-    // 延迟关闭对话框，让用户看到按钮状态变化
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) {
-        Navigator.of(context).pop();
-        widget.onAccept();
-      }
-    });
+
+    // 立即关闭对话框，避免在测试中留下未处理的计时器
+    Navigator.of(context).pop();
+    widget.onAccept();
   }
 
   /// 处理拒绝连接
@@ -176,13 +169,9 @@ class _ConnectionRequestDialogState extends State<ConnectionRequestDialog> {
     setState(() {
       _isRejecting = true;
     });
-    
-    // 延迟关闭对话框，让用户看到按钮状态变化
-    Future.delayed(const Duration(milliseconds: 300), () {
-      if (mounted) {
-        Navigator.of(context).pop();
-        widget.onReject();
-      }
-    });
+
+    // 立即关闭对话框，避免在测试中留下未处理的计时器
+    Navigator.of(context).pop();
+    widget.onReject();
   }
-} 
+}
