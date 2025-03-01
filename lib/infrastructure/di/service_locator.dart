@@ -3,6 +3,8 @@ import '../../application/services/connection_service.dart';
 import '../../application/services/connection_service_impl.dart';
 import '../../application/services/socket_communication_service.dart';
 import '../../application/services/socket_communication_service_impl.dart';
+import '../../application/services/device_info_service.dart';
+import '../../application/services/device_info_service_impl.dart';
 
 /// 全局服务定位器实例
 final GetIt serviceLocator = GetIt.instance;
@@ -13,9 +15,14 @@ void setupServiceLocator() {
   serviceLocator.registerLazySingleton<SocketCommunicationService>(
     () => SocketCommunicationServiceImpl(),
   );
-  
+
   // 注册连接服务
   serviceLocator.registerLazySingleton<ConnectionService>(
     () => ConnectionServiceImpl(serviceLocator<SocketCommunicationService>()),
   );
-} 
+
+  // 注册设备信息服务
+  serviceLocator.registerLazySingleton<DeviceInfoService>(
+    () => DeviceInfoServiceImpl(),
+  );
+}
