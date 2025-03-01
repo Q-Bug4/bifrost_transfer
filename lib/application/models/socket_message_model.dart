@@ -5,40 +5,58 @@ import '../../infrastructure/constants/network_constants.dart';
 enum SocketMessageType {
   /// 连接请求
   CONNECTION_REQUEST,
-  
+
   /// 连接响应
   CONNECTION_RESPONSE,
-  
+
   /// 配对确认
   PAIRING_CONFIRMATION,
-  
+
   /// 心跳检测请求
   PING,
-  
+
   /// 心跳检测响应
   PONG,
-  
+
   /// 文件传输请求
   FILE_TRANSFER_REQUEST,
-  
+
   /// 文件传输响应
   FILE_TRANSFER_RESPONSE,
-  
+
   /// 文件传输进度
   FILE_TRANSFER_PROGRESS,
-  
+
   /// 文件传输完成
   FILE_TRANSFER_COMPLETE,
-  
+
   /// 文件传输取消
   FILE_TRANSFER_CANCEL,
-  
+
   /// 文件传输错误
   FILE_TRANSFER_ERROR,
-  
+
+  /// 文本传输请求
+  TEXT_TRANSFER_REQUEST,
+
+  /// 文本传输响应
+  TEXT_TRANSFER_RESPONSE,
+
+  /// 文本传输进度
+  TEXT_TRANSFER_PROGRESS,
+
+  /// 文本传输完成
+  TEXT_TRANSFER_COMPLETE,
+
+  /// 文本传输取消
+  TEXT_TRANSFER_CANCEL,
+
+  /// 文本传输错误
+  TEXT_TRANSFER_ERROR,
+
   /// 断开连接
   DISCONNECT,
-  
+
   /// 错误消息
   ERROR,
 }
@@ -47,30 +65,29 @@ enum SocketMessageType {
 class SocketMessageModel {
   /// 消息类型
   final SocketMessageType type;
-  
+
   /// 消息数据
   final Map<String, dynamic> data;
-  
+
   /// 消息时间戳
   final int timestamp;
-  
+
   /// 协议版本
   final String protocolVersion;
-  
+
   /// 构造函数
   SocketMessageModel({
     required this.type,
     required this.data,
     int? timestamp,
     String? protocolVersion,
-  }) : 
-    timestamp = timestamp ?? DateTime.now().millisecondsSinceEpoch,
-    protocolVersion = protocolVersion ?? NetworkConstants.PROTOCOL_VERSION;
-  
+  })  : timestamp = timestamp ?? DateTime.now().millisecondsSinceEpoch,
+        protocolVersion = protocolVersion ?? NetworkConstants.PROTOCOL_VERSION;
+
   /// 从JSON字符串创建消息对象
   factory SocketMessageModel.fromJson(String jsonStr) {
     final Map<String, dynamic> json = jsonDecode(jsonStr);
-    
+
     return SocketMessageModel(
       type: _stringToMessageType(json['type']),
       data: json['data'] ?? {},
@@ -78,7 +95,7 @@ class SocketMessageModel {
       protocolVersion: json['protocolVersion'],
     );
   }
-  
+
   /// 将消息对象转换为JSON字符串
   String toJson() {
     return jsonEncode({
@@ -88,7 +105,7 @@ class SocketMessageModel {
       'protocolVersion': protocolVersion,
     });
   }
-  
+
   /// 字符串转消息类型
   static SocketMessageType _stringToMessageType(String typeStr) {
     return SocketMessageType.values.firstWhere(
@@ -96,7 +113,7 @@ class SocketMessageModel {
       orElse: () => SocketMessageType.ERROR,
     );
   }
-  
+
   /// 创建连接请求消息
   static SocketMessageModel createConnectionRequest({
     required String deviceName,
@@ -112,7 +129,7 @@ class SocketMessageModel {
       },
     );
   }
-  
+
   /// 创建连接响应消息
   static SocketMessageModel createConnectionResponse({
     required bool accepted,
@@ -130,7 +147,7 @@ class SocketMessageModel {
       },
     );
   }
-  
+
   /// 创建配对确认消息
   static SocketMessageModel createPairingConfirmation({
     required bool confirmed,
@@ -144,7 +161,7 @@ class SocketMessageModel {
       },
     );
   }
-  
+
   /// 创建心跳检测请求消息
   static SocketMessageModel createPing() {
     return SocketMessageModel(
@@ -152,7 +169,7 @@ class SocketMessageModel {
       data: {},
     );
   }
-  
+
   /// 创建心跳检测响应消息
   static SocketMessageModel createPong() {
     return SocketMessageModel(
@@ -160,7 +177,7 @@ class SocketMessageModel {
       data: {},
     );
   }
-  
+
   /// 创建文件传输请求消息
   static SocketMessageModel createFileTransferRequest({
     required String fileName,
@@ -178,7 +195,7 @@ class SocketMessageModel {
       },
     );
   }
-  
+
   /// 创建文件传输响应消息
   static SocketMessageModel createFileTransferResponse({
     required bool accepted,
@@ -194,7 +211,7 @@ class SocketMessageModel {
       },
     );
   }
-  
+
   /// 创建文件传输进度消息
   static SocketMessageModel createFileTransferProgress({
     required String fileName,
@@ -212,7 +229,7 @@ class SocketMessageModel {
       },
     );
   }
-  
+
   /// 创建文件传输完成消息
   static SocketMessageModel createFileTransferComplete({
     required String fileName,
@@ -226,7 +243,7 @@ class SocketMessageModel {
       },
     );
   }
-  
+
   /// 创建文件传输取消消息
   static SocketMessageModel createFileTransferCancel({
     required String fileName,
@@ -240,21 +257,108 @@ class SocketMessageModel {
       },
     );
   }
-  
+
   /// 创建文件传输错误消息
-  static SocketMessageModel createFileTransferError({
-    required String fileName,
+  static SocketMessageModel createFileTransferErrorMessage({
+    required String transferId,
     required String errorMessage,
   }) {
     return SocketMessageModel(
       type: SocketMessageType.FILE_TRANSFER_ERROR,
       data: {
-        'fileName': fileName,
+        'transferId': transferId,
         'errorMessage': errorMessage,
       },
     );
   }
-  
+
+  /// 创建文本传输请求消息
+  static SocketMessageModel createTextTransferRequestMessage({
+    required String text,
+    required int textLength,
+    required int lineCount,
+  }) {
+    return SocketMessageModel(
+      type: SocketMessageType.TEXT_TRANSFER_REQUEST,
+      data: {
+        'transferId': DateTime.now().millisecondsSinceEpoch.toString(),
+        'textLength': textLength,
+        'lineCount': lineCount,
+        'text': text,
+      },
+    );
+  }
+
+  /// 创建文本传输响应消息
+  static SocketMessageModel createTextTransferResponseMessage({
+    required String transferId,
+    required bool accepted,
+    String? rejectReason,
+  }) {
+    return SocketMessageModel(
+      type: SocketMessageType.TEXT_TRANSFER_RESPONSE,
+      data: {
+        'transferId': transferId,
+        'accepted': accepted,
+        if (rejectReason != null) 'rejectReason': rejectReason,
+      },
+    );
+  }
+
+  /// 创建文本传输进度消息
+  static SocketMessageModel createTextTransferProgressMessage({
+    required String transferId,
+    required int processedLength,
+    required int totalLength,
+  }) {
+    return SocketMessageModel(
+      type: SocketMessageType.TEXT_TRANSFER_PROGRESS,
+      data: {
+        'transferId': transferId,
+        'processedLength': processedLength,
+        'totalLength': totalLength,
+      },
+    );
+  }
+
+  /// 创建文本传输完成消息
+  static SocketMessageModel createTextTransferCompleteMessage({
+    required String transferId,
+  }) {
+    return SocketMessageModel(
+      type: SocketMessageType.TEXT_TRANSFER_COMPLETE,
+      data: {
+        'transferId': transferId,
+      },
+    );
+  }
+
+  /// 创建文本传输取消消息
+  static SocketMessageModel createTextTransferCancelMessage({
+    required String transferId,
+  }) {
+    return SocketMessageModel(
+      type: SocketMessageType.TEXT_TRANSFER_CANCEL,
+      data: {
+        'transferId': transferId,
+      },
+    );
+  }
+
+  /// 创建文本传输错误消息
+  static SocketMessageModel createTextTransferErrorMessage({
+    required String transferId,
+    required String errorMessage,
+  }) {
+    return SocketMessageModel(
+      type: SocketMessageType.TEXT_TRANSFER_ERROR,
+      data: {
+        'transferId': transferId,
+        'errorMessage': errorMessage,
+      },
+    );
+  }
+
   /// 创建断开连接消息
   static SocketMessageModel createDisconnect({
     String? reason,
@@ -266,7 +370,7 @@ class SocketMessageModel {
       },
     );
   }
-  
+
   /// 创建错误消息
   static SocketMessageModel createError({
     required String errorCode,
@@ -280,4 +384,4 @@ class SocketMessageModel {
       },
     );
   }
-} 
+}

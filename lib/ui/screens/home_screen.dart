@@ -9,6 +9,7 @@ import '../widgets/connection_request_dialog.dart';
 import '../widgets/connection_status_widget.dart';
 import '../widgets/device_info_widget.dart';
 import '../../application/services/connection_service.dart';
+import 'text_transfer_screen.dart';
 
 /// 主页面
 class HomeScreen extends StatefulWidget {
@@ -259,25 +260,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   /// 构建文本传输选项卡
   Widget _buildTextTransferTab() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.text_fields,
-            size: 64,
-            color: Colors.grey,
-          ),
-          SizedBox(height: 16),
-          Text(
-            '文本传输功能将在后续版本中实现',
-            style: TextStyle(
-              color: Colors.grey,
-            ),
-          ),
-        ],
-      ),
-    );
+    return const TextTransferScreen();
   }
 
   /// 选项卡点击事件
