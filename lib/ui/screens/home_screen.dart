@@ -21,10 +21,10 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   /// 选项卡控制器
   final _tabController = PageController();
-  
+
   /// 当前选项卡索引
   int _currentTabIndex = 0;
-  
+
   /// 选项卡列表
   final _tabs = const [
     {'text': '文件传输', 'icon': Icons.file_copy},
@@ -35,7 +35,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    
+
     // 延迟执行，确保界面已经构建完成
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _listenForConnectionRequests();
@@ -134,13 +134,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               child: const Text('模拟接收连接请求（测试）'),
             ),
           ),
-        
+
         // 选项卡
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: _buildTabs(),
         ),
-        
+
         // 选项卡内容
         Expanded(
           child: PageView(
@@ -182,7 +182,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget _buildTabItem(int index) {
     final isSelected = _currentTabIndex == index;
     final tab = _tabs[index];
-    
+
     return InkWell(
       onTap: () => _onTabTapped(index),
       child: Container(
@@ -244,7 +244,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
               const SizedBox(height: 32),
               // 测试按钮，用于模拟接收连接请求
-              if (connectionStateNotifier.connectionState.status == ConnectionStatus.disconnected)
+              if (connectionStateNotifier.connectionState.status ==
+                  ConnectionStatus.disconnected)
                 ElevatedButton(
                   onPressed: _simulateIncomingConnectionRequest,
                   child: const Text('模拟接收连接请求'),
@@ -284,7 +285,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     setState(() {
       _currentTabIndex = index;
     });
-    
+
     _tabController.animateToPage(
       index,
       duration: const Duration(milliseconds: 300),
@@ -294,16 +295,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   /// 监听连接请求
   void _listenForConnectionRequests() {
-    final connectionStateNotifier = Provider.of<ConnectionStateNotifier>(context, listen: false);
-    
+    final connectionStateNotifier =
+        Provider.of<ConnectionStateNotifier>(context, listen: false);
+
     print('开始监听连接请求');
-    
+
     // 监听连接请求
     connectionStateNotifier.addListener(() {
       print('ConnectionStateNotifier状态变化');
       // 如果有待处理的连接请求，显示对话框
       if (connectionStateNotifier.pendingConnectionRequest != null) {
-        print('检测到待处理连接请求: ${connectionStateNotifier.pendingConnectionRequest}');
+        print(
+            '检测到待处理连接请求: ${connectionStateNotifier.pendingConnectionRequest}');
         // 确保对话框只显示一次
         if (!_isConnectionRequestDialogShowing) {
           print('显示连接请求对话框');
@@ -315,7 +318,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         print('没有待处理的连接请求');
       }
     });
-    
+
     // 初始检查是否有待处理的连接请求
     WidgetsBinding.instance.addPostFrameCallback((_) {
       print('初始检查待处理连接请求');
@@ -332,12 +335,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _isConnectionRequestDialogShowing = false;
 
   /// 显示连接请求对话框
-  void _showConnectionRequestDialog(ConnectionStateNotifier connectionStateNotifier) {
+  void _showConnectionRequestDialog(
+      ConnectionStateNotifier connectionStateNotifier) {
     if (_isConnectionRequestDialogShowing) return;
-    
+
     final request = connectionStateNotifier.pendingConnectionRequest!;
     _isConnectionRequestDialogShowing = true;
-    
+
     showDialog(
       context: context,
       barrierDismissible: false, // 禁止点击背景关闭对话框
@@ -346,10 +350,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         initiatorName: request['deviceName'],
         pairingCode: request['pairingCode'],
         onAccept: () {
+          // 关闭对话框
+          Navigator.of(context).pop();
           _isConnectionRequestDialogShowing = false;
           connectionStateNotifier.acceptConnectionRequest();
         },
         onReject: () {
+          // 关闭对话框
+          Navigator.of(context).pop();
           _isConnectionRequestDialogShowing = false;
           connectionStateNotifier.rejectConnectionRequest();
         },
@@ -362,12 +370,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   /// 模拟接收连接请求
   void _simulateIncomingConnectionRequest() {
-    final connectionService = Provider.of<ConnectionService>(context, listen: false);
-    
+    final connectionService =
+        Provider.of<ConnectionService>(context, listen: false);
+
     connectionService.simulateIncomingConnectionRequest(
       '192.168.1.101',
       '测试设备',
       '123456',
     );
   }
-} 
+}
