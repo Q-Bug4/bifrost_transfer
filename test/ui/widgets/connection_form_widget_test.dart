@@ -205,5 +205,43 @@ void main() {
       // 验证方法调用
       verify(mockConnectionStateNotifier.cancelConnection()).called(1);
     });
+
+    testWidgets('连接UI元素应在同一行显示', (WidgetTester tester) async {
+      // 设置初始状态
+      when(mockConnectionStateNotifier.connectionState).thenReturn(
+        ConnectionModel(status: ConnectionStatus.disconnected),
+      );
+
+      // 构建组件
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ChangeNotifierProvider<ConnectionStateNotifier>.value(
+            value: mockConnectionStateNotifier,
+            child: const Scaffold(
+              body: ConnectionFormWidget(),
+            ),
+          ),
+        ),
+      );
+
+      // 验证UI元素在同一行
+      final rowFinder = find.byType(Row);
+      expect(rowFinder, findsOneWidget);
+
+      final textFinder = find.text('连接到设备');
+      final textFieldFinder = find.byType(TextFormField);
+      final buttonFinder = find.byType(ElevatedButton);
+
+      expect(textFinder, findsOneWidget);
+      expect(textFieldFinder, findsOneWidget);
+      expect(buttonFinder, findsOneWidget);
+
+      // 验证元素顺序
+      final row = tester.widget<Row>(rowFinder);
+      final children = row.children;
+      expect(children[0], isA<Text>());
+      expect(children[2], isA<Expanded>());
+      expect(children[4], isA<ElevatedButton>());
+    });
   });
 }
