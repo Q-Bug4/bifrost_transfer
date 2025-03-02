@@ -30,9 +30,7 @@ class _TextTransferScreenState extends State<TextTransferScreen> {
     super.initState();
 
     // 初始化服务和状态管理
-    _textTransferService = TextTransferServiceImpl(
-      serviceLocator<SocketCommunicationService>(),
-    );
+    _textTransferService = serviceLocator<TextTransferService>();
     _textTransferStateNotifier = TextTransferStateNotifier(
       textTransferService: _textTransferService,
     );
@@ -64,62 +62,67 @@ class _TextTransferScreenContent extends StatelessWidget {
     final selectedTransfer = textTransferState.selectedTextTransfer;
 
     return Scaffold(
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // 文本输入区域
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: const TextInputWidget(),
-          ),
-
-          // 分隔线
-          const Divider(),
-
-          // 标题
-          Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            child: Text(
-              '文本传输记录',
-              style: Theme.of(context).textTheme.titleMedium,
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 文本输入区域
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: const TextInputWidget(),
             ),
-          ),
 
-          // 传输列表和详情区域
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // 传输列表
-                Expanded(
-                  flex: 1,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Theme.of(context).dividerColor),
-                      borderRadius: BorderRadius.circular(8.0),
-                    ),
-                    margin: const EdgeInsets.fromLTRB(16.0, 0.0, 8.0, 16.0),
-                    child: const TextTransferListWidget(),
-                  ),
-                ),
+            // 分隔线
+            const Divider(),
 
-                // 传输详情
-                Expanded(
-                  flex: 2,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Theme.of(context).dividerColor),
-                      borderRadius: BorderRadius.circular(8.0),
-                    ),
-                    margin: const EdgeInsets.fromLTRB(8.0, 0.0, 16.0, 16.0),
-                    child: const TextTransferDetailWidget(),
-                  ),
-                ),
-              ],
+            // 标题
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: Text(
+                '文本传输记录',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
             ),
-          ),
-        ],
+
+            // 传输列表和详情区域
+            SizedBox(
+              height: 300,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // 传输列表
+                  Expanded(
+                    flex: 1,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border:
+                            Border.all(color: Theme.of(context).dividerColor),
+                        borderRadius: BorderRadius.circular(8.0),
+                      ),
+                      margin: const EdgeInsets.fromLTRB(16.0, 0.0, 8.0, 16.0),
+                      child: const TextTransferListWidget(),
+                    ),
+                  ),
+
+                  // 传输详情
+                  Expanded(
+                    flex: 2,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border:
+                            Border.all(color: Theme.of(context).dividerColor),
+                        borderRadius: BorderRadius.circular(8.0),
+                      ),
+                      margin: const EdgeInsets.fromLTRB(8.0, 0.0, 16.0, 16.0),
+                      child: const TextTransferDetailWidget(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

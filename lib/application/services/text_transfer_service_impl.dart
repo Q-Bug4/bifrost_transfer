@@ -220,6 +220,7 @@ class TextTransferServiceImpl implements TextTransferService {
       final completeMessage =
           SocketMessageModel.createTextTransferCompleteMessage(
         transferId: transferId,
+        text: textTransfer?.text ?? '',
       );
       await _socketService.sendMessage(completeMessage);
     } catch (e) {
@@ -283,6 +284,7 @@ class TextTransferServiceImpl implements TextTransferService {
       final completeMessage =
           SocketMessageModel.createTextTransferCompleteMessage(
         transferId: transferId,
+        text: textTransfer.text,
       );
       await _socketService.sendMessage(completeMessage);
 
@@ -335,21 +337,25 @@ class TextTransferServiceImpl implements TextTransferService {
   /// 处理文本传输完成
   void _handleTextTransferComplete(SocketMessageModel message) {
     final transferId = message.data['transferId'] as String;
+    final text = message.data['text'] as String?;
 
-    final textTransfer = _activeTextTransfers[transferId];
-    if (textTransfer == null) {
-      _logger.warning('收到未知文本传输的完成消息: $transferId');
-      return;
+    _logger.info('收到文本传输完成消息: $transferId');
+
+    final transfer = _activeTextTransfers[transferId];
+    if (transfer != null) {
+      final updatedTransfer = transfer.copyWith(
+        status: TextTransferStatus.completed,
+        processedLength: transfer.textLength,
+        text: text ?? transfer.text,
+        endTime: DateTime.now(),
+      );
+
+      _activeTextTransfers[transferId] = updatedTransfer;
+      _notifyTextTransferUpdate(updatedTransfer);
+      _logger.info('文本传输完成: $transferId');
+    } else {
+      _logger.warning('未找到对应的文本传输: $transferId');
     }
-
-    // 更新状态为已完成
-    final completedTransfer = textTransfer.copyWith(
-      status: TextTransferStatus.completed,
-      processedLength: textTransfer.textLength,
-      endTime: DateTime.now(),
-    );
-    _activeTextTransfers[transferId] = completedTransfer;
-    _notifyTextTransferUpdate(completedTransfer);
   }
 
   /// 处理文本传输取消

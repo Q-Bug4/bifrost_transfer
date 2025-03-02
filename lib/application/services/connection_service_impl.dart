@@ -51,8 +51,7 @@ class ConnectionServiceImpl implements ConnectionService {
   /// 构造函数
   ConnectionServiceImpl(this._socketService) {
     // 订阅Socket消息
-    _messageSubscription =
-        _socketService.messageStream.listen(_handleSocketMessage);
+    _messageSubscription = _socketService.messageStream.listen(_handleMessage);
 
     // 订阅Socket连接状态
     _connectionStatusSubscription = _socketService.connectionStatusStream
@@ -396,7 +395,7 @@ class ConnectionServiceImpl implements ConnectionService {
   }
 
   /// 处理Socket消息
-  void _handleSocketMessage(SocketMessageModel message) {
+  void _handleMessage(SocketMessageModel message) {
     _logger.info('收到Socket消息: ${message.type}');
 
     switch (message.type) {
@@ -411,6 +410,20 @@ class ConnectionServiceImpl implements ConnectionService {
         break;
       case SocketMessageType.DISCONNECT:
         _handleDisconnect(message);
+        break;
+      case SocketMessageType.TEXT_TRANSFER_REQUEST:
+      case SocketMessageType.TEXT_TRANSFER_RESPONSE:
+      case SocketMessageType.TEXT_TRANSFER_PROGRESS:
+      case SocketMessageType.TEXT_TRANSFER_COMPLETE:
+      case SocketMessageType.TEXT_TRANSFER_CANCEL:
+      case SocketMessageType.TEXT_TRANSFER_ERROR:
+      case SocketMessageType.FILE_TRANSFER_REQUEST:
+      case SocketMessageType.FILE_TRANSFER_RESPONSE:
+      case SocketMessageType.FILE_TRANSFER_PROGRESS:
+      case SocketMessageType.FILE_TRANSFER_COMPLETE:
+      case SocketMessageType.FILE_TRANSFER_CANCEL:
+      case SocketMessageType.FILE_TRANSFER_ERROR:
+        // 忽略文件和文本传输相关的消息，这些消息由其他服务处理
         break;
       default:
         _logger.warning('未处理的消息类型: ${message.type}');

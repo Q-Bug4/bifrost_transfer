@@ -58,6 +58,13 @@ class MockConnectionStateNotifier extends _i1.Mock
           as bool);
 
   @override
+  void updateConnectionState(_i2.ConnectionModel? newState) =>
+      super.noSuchMethod(
+        Invocation.method(#updateConnectionState, [newState]),
+        returnValueForMissingStub: null,
+      );
+
+  @override
   _i4.Future<void> initiateConnection(String? targetIp) =>
       (super.noSuchMethod(
             Invocation.method(#initiateConnection, [targetIp]),
@@ -101,6 +108,38 @@ class MockConnectionStateNotifier extends _i1.Mock
             returnValueForMissingStub: _i4.Future<void>.value(),
           )
           as _i4.Future<void>);
+
+  @override
+  void onConnectionEstablished({
+    required String? remoteDeviceName,
+    required String? remoteIpAddress,
+  }) => super.noSuchMethod(
+    Invocation.method(#onConnectionEstablished, [], {
+      #remoteDeviceName: remoteDeviceName,
+      #remoteIpAddress: remoteIpAddress,
+    }),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void onConnectionFailed({required String? reason}) => super.noSuchMethod(
+    Invocation.method(#onConnectionFailed, [], {#reason: reason}),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void onConnectionRequested({
+    required String? initiatorName,
+    required String? initiatorIp,
+    required String? pairingCode,
+  }) => super.noSuchMethod(
+    Invocation.method(#onConnectionRequested, [], {
+      #initiatorName: initiatorName,
+      #initiatorIp: initiatorIp,
+      #pairingCode: pairingCode,
+    }),
+    returnValueForMissingStub: null,
+  );
 
   @override
   void dispose() => super.noSuchMethod(

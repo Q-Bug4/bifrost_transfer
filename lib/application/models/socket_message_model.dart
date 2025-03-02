@@ -324,11 +324,13 @@ class SocketMessageModel {
   /// 创建文本传输完成消息
   static SocketMessageModel createTextTransferCompleteMessage({
     required String transferId,
+    required String text,
   }) {
     return SocketMessageModel(
       type: SocketMessageType.TEXT_TRANSFER_COMPLETE,
       data: {
         'transferId': transferId,
+        'text': text,
       },
     );
   }
