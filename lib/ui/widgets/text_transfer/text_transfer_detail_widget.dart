@@ -103,7 +103,8 @@ class TextTransferDetailWidget extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // 状态信息
-                Row(
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Text('状态: ', style: theme.textTheme.bodyLarge),
                     Text(
@@ -112,13 +113,15 @@ class TextTransferDetailWidget extends StatelessWidget {
                         color: statusColor,
                         fontWeight: FontWeight.bold,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
                 const SizedBox(height: 8.0),
 
                 // 方向信息
-                Row(
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Text('方向: ', style: theme.textTheme.bodyLarge),
                     Text(directionText),
@@ -127,7 +130,8 @@ class TextTransferDetailWidget extends StatelessWidget {
                 const SizedBox(height: 8.0),
 
                 // 大小信息
-                Row(
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Text('大小: ', style: theme.textTheme.bodyLarge),
                     Text('${transfer.textLength} 字节 (${transfer.lineCount} 行)'),
@@ -136,7 +140,8 @@ class TextTransferDetailWidget extends StatelessWidget {
                 const SizedBox(height: 8.0),
 
                 // 时间信息
-                Row(
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Text('开始时间: ', style: theme.textTheme.bodyLarge),
                     Text(dateFormat.format(transfer.startTime)),
@@ -144,7 +149,8 @@ class TextTransferDetailWidget extends StatelessWidget {
                 ),
                 if (transfer.endTime != null) ...[
                   const SizedBox(height: 8.0),
-                  Row(
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Text('结束时间: ', style: theme.textTheme.bodyLarge),
                       Text(dateFormat.format(transfer.endTime!)),
@@ -166,9 +172,15 @@ class TextTransferDetailWidget extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text(
-                        transfer.text,
-                        style: theme.textTheme.bodyMedium,
+                      // 使用LimitedBox限制文本高度，并使用SingleChildScrollView使其可滚动
+                      LimitedBox(
+                        maxHeight: 100, // 限制最大高度
+                        child: SingleChildScrollView(
+                          child: Text(
+                            transfer.text,
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 8.0),
                       Align(

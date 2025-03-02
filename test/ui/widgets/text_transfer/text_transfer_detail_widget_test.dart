@@ -353,5 +353,60 @@ void main() {
       // 验证调用
       verify(mockTextTransferService.cancelTextTransfer('test_id')).called(1);
     });
+
+    testWidgets('长文本应正确显示在滚动容器中而不溢出', (WidgetTester tester) async {
+      // 创建一个非常长的文本
+      final longText = 'a' * 5000; // 创建一个5000字符的长文本
+
+      // 创建测试数据
+      final longTextTransfer = TextTransferModel(
+        transferId: 'test_id_long',
+        text: longText,
+        textLength: longText.length,
+        lineCount: 1,
+        direction: TextTransferDirection.sending,
+        status: TextTransferStatus.completed,
+        startTime: DateTime(2023, 1, 1, 10, 0),
+        endTime: DateTime(2023, 1, 1, 10, 1),
+      );
+
+      // 设置模拟返回值
+      when(mockTextTransferService.getTextTransfer('test_id_long'))
+          .thenReturn(longTextTransfer);
+
+      // 选择传输
+      textTransferStateNotifier.selectTextTransfer('test_id_long');
+
+      // 构建组件
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ChangeNotifierProvider<TextTransferStateNotifier>.value(
+            value: textTransferStateNotifier,
+            child: const Scaffold(
+              body: SizedBox(
+                height: 500, // 设置一个固定高度来模拟实际环境
+                child: TextTransferDetailWidget(),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // 验证UI
+      expect(find.text('文本内容:'), findsOneWidget);
+
+      // 验证长文本的开头部分是否显示
+      expect(find.textContaining('a' * 10), findsOneWidget);
+
+      // 验证没有溢出错误
+      final errorFinder = find.byType(ErrorWidget);
+      expect(errorFinder, findsNothing);
+
+      // 验证SingleChildScrollView是否存在
+      expect(find.byType(SingleChildScrollView), findsWidgets);
+
+      // 验证LimitedBox是否存在
+      expect(find.byType(LimitedBox), findsOneWidget);
+    });
   });
 }

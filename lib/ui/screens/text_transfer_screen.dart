@@ -87,7 +87,7 @@ class _TextTransferScreenContent extends StatelessWidget {
 
             // 传输列表和详情区域
             SizedBox(
-              height: 300,
+              height: 297,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
