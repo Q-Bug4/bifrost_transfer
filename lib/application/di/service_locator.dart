@@ -12,6 +12,8 @@ import '../services/connection_service.dart';
 import '../services/connection_service_impl.dart';
 import '../services/device_info_service.dart';
 import '../services/device_info_service_impl.dart';
+import '../services/text_transfer_service.dart';
+import '../services/text_transfer_service_impl.dart';
 
 /// 服务定位器
 class ServiceLocator {
@@ -50,6 +52,10 @@ class ServiceLocator {
     getIt.registerLazySingleton<DeviceInfoService>(
       () => DeviceInfoServiceImpl(),
     );
+
+    getIt.registerLazySingleton<TextTransferService>(
+      () => TextTransferServiceImpl(getIt<SocketCommunicationService>()),
+    );
   }
 
   /// 获取Provider列表
@@ -75,6 +81,9 @@ class ServiceLocator {
       ),
       Provider<FileTransferService>(
         create: (_) => getIt<FileTransferService>(),
+      ),
+      Provider<TextTransferService>(
+        create: (_) => getIt<TextTransferService>(),
       ),
     ];
   }
