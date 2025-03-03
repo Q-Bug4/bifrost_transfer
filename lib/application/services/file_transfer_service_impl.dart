@@ -159,8 +159,44 @@ class FileTransferServiceImpl implements FileTransferService {
 
   @override
   Future<void> resumeFileTransfer(String transferId) async {
-    // TODO: 实现文件传输恢复功能
-    throw UnimplementedError('恢复文件传输功能尚未实现');
+    final transfer = _activeTransfers[transferId];
+    if (transfer == null) {
+      throw Exception('传输不存在');
+    }
+
+    if (!_socketService.isConnected) {
+      throw Exception('未连接到设备');
+    }
+
+    if (transfer.isCompleted || transfer.isCancelled) {
+      throw Exception('传输已完成或已取消，无法恢复');
+    }
+
+    // 创建恢复传输消息
+    final message = SocketMessageModel.createFileTransferResumeMessage(
+      transferId: transferId,
+      fileName: transfer.fileName,
+      filePath: transfer.filePath,
+      fileSize: transfer.fileSize,
+      fileHash: transfer.fileHash,
+      bytesTransferred: transfer.bytesTransferred,
+    );
+
+    try {
+      await _socketService.sendMessage(message);
+
+      // 更新传输状态
+      final updatedTransfer = transfer.copyWith(
+        status: FileTransferStatus.transferring,
+      );
+      _activeTransfers[transferId] = updatedTransfer;
+      _notifyFileTransferUpdate(updatedTransfer);
+
+      _logger.info('恢复文件传输: $transferId');
+    } catch (e) {
+      _logger.severe('恢复文件传输失败: $e');
+      throw Exception('恢复文件传输失败: $e');
+    }
   }
 
   @override
