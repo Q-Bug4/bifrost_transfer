@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:provider/provider.dart';
+import 'package:get_it/get_it.dart';
 import 'application/services/connection_service.dart';
 import 'application/services/device_info_service.dart';
 import 'application/states/connection_state_notifier.dart';
-import 'infrastructure/di/service_locator.dart';
+import 'application/di/service_locator.dart';
 import 'ui/screens/home_screen.dart';
 
 void main() {
@@ -12,7 +13,7 @@ void main() {
   _setupLogging();
 
   // 初始化服务定位器
-  setupServiceLocator();
+  ServiceLocator.init();
 
   runApp(const MyApp());
 }
@@ -30,14 +31,16 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final getIt = GetIt.instance;
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<ConnectionStateNotifier>(
           create: (_) => ConnectionStateNotifier(
-            connectionService: serviceLocator<ConnectionService>(),
-            deviceInfoService: serviceLocator<DeviceInfoService>(),
+            connectionService: getIt<ConnectionService>(),
+            deviceInfoService: getIt<DeviceInfoService>(),
           ),
         ),
+        ...ServiceLocator.getAllProviders(),
       ],
       child: MaterialApp(
         title: 'Bifrost Transfer',

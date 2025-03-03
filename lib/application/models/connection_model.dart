@@ -1,3 +1,5 @@
+import 'connection_status.dart';
+
 /// 连接模型类，用于表示设备连接状态和信息
 class ConnectionModel {
   /// 连接状态
@@ -46,22 +48,4 @@ class ConnectionModel {
       isInitiator: isInitiator ?? this.isInitiator,
     );
   }
-}
-
-/// 连接状态枚举
-enum ConnectionStatus {
-  /// 未连接
-  disconnected,
-
-  /// 连接中
-  connecting,
-
-  /// 等待确认
-  awaitingConfirmation,
-
-  /// 已连接
-  connected,
-
-  /// 连接失败
-  failed,
 }

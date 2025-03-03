@@ -9,7 +9,10 @@ import '../widgets/connection_request_dialog.dart';
 import '../widgets/connection_status_widget.dart';
 import '../widgets/device_info_widget.dart';
 import '../../application/services/connection_service.dart';
+import '../../application/models/connection_status.dart';
+import '../../application/models/device_info_model.dart';
 import 'text_transfer_screen.dart';
+import '../screens/file_transfer_screen.dart';
 
 /// 主页面
 class HomeScreen extends StatefulWidget {
@@ -225,37 +228,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   /// 构建文件传输选项卡
   Widget _buildFileTransferTab() {
-    return Consumer<ConnectionStateNotifier>(
-      builder: (context, connectionStateNotifier, child) {
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.file_copy,
-                size: 64,
-                color: Colors.grey,
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                '文件传输功能将在后续版本中实现',
-                style: TextStyle(
-                  color: Colors.grey,
-                ),
-              ),
-              const SizedBox(height: 32),
-              // 测试按钮，用于模拟接收连接请求
-              if (connectionStateNotifier.connectionState.status ==
-                  ConnectionStatus.disconnected)
-                ElevatedButton(
-                  onPressed: _simulateIncomingConnectionRequest,
-                  child: const Text('模拟接收连接请求'),
-                ),
-            ],
-          ),
-        );
-      },
-    );
+    return const FileTransferScreen();
   }
 
   /// 构建文本传输选项卡
@@ -356,10 +329,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final connectionService =
         Provider.of<ConnectionService>(context, listen: false);
 
-    connectionService.simulateIncomingConnectionRequest(
-      '192.168.1.101',
-      '测试设备',
-      '123456',
+    final remoteDevice = DeviceInfoModel(
+      deviceName: '测试设备',
+      ipAddress: '192.168.1.101',
     );
+
+    connectionService.simulateIncomingConnectionRequest(remoteDevice);
   }
 }

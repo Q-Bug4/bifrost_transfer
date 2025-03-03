@@ -5,6 +5,7 @@ import '../models/connection_model.dart';
 import '../models/device_info_model.dart';
 import '../services/connection_service.dart';
 import '../services/device_info_service.dart';
+import '../models/connection_status.dart';
 
 /// 连接状态管理类，使用ChangeNotifier进行状态管理
 class ConnectionStateNotifier extends ChangeNotifier {

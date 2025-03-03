@@ -5,6 +5,7 @@ import 'package:mockito/mockito.dart';
 import 'package:bifrost_transfer/ui/widgets/connection_status_widget.dart';
 import 'package:bifrost_transfer/application/states/connection_state_notifier.dart';
 import 'package:bifrost_transfer/application/models/connection_model.dart';
+import 'package:bifrost_transfer/application/models/connection_status.dart';
 import '../../mocks/mock_connection_state_notifier.mocks.dart';
 
 void main() {

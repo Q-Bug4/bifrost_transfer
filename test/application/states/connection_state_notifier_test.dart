@@ -6,6 +6,7 @@ import 'package:bifrost_transfer/application/models/device_info_model.dart';
 import 'package:bifrost_transfer/application/services/connection_service.dart';
 import 'package:bifrost_transfer/application/services/device_info_service.dart';
 import 'package:bifrost_transfer/application/states/connection_state_notifier.dart';
+import 'package:bifrost_transfer/application/models/connection_status.dart';
 import '../../mocks/mock_connection_service.mocks.dart';
 
 // 使用生成的MockDeviceInfoService

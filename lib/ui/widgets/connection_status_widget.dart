@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../application/models/connection_model.dart';
 import '../../application/states/connection_state_notifier.dart';
+import '../../application/models/connection_status.dart';
 
 /// 连接状态显示组件
 class ConnectionStatusWidget extends StatelessWidget {
@@ -12,7 +13,7 @@ class ConnectionStatusWidget extends StatelessWidget {
     return Consumer<ConnectionStateNotifier>(
       builder: (context, connectionStateNotifier, child) {
         final connectionState = connectionStateNotifier.connectionState;
-        
+
         // 根据连接状态返回不同的显示
         return _buildStatusIndicator(connectionState);
       },
@@ -29,39 +30,45 @@ class ConnectionStatusWidget extends StatelessWidget {
 
     switch (connectionState.status) {
       case ConnectionStatus.disconnected:
-        backgroundColor = Colors.red.withOpacity(0.2);
-        textColor = Colors.red.shade400;
+        backgroundColor = Colors.grey.withOpacity(0.2);
+        textColor = Colors.grey;
         statusText = '未连接';
-        iconData = Icons.circle;
+        iconData = Icons.cloud_off;
         break;
       case ConnectionStatus.connecting:
         backgroundColor = Colors.orange.withOpacity(0.2);
-        textColor = Colors.orange.shade400;
+        textColor = Colors.orange;
         statusText = '连接中...';
         iconData = Icons.sync;
         break;
       case ConnectionStatus.awaitingConfirmation:
-        backgroundColor = Colors.orange.withOpacity(0.2);
-        textColor = Colors.orange.shade400;
+        backgroundColor = Colors.blue.withOpacity(0.2);
+        textColor = Colors.blue;
         statusText = '等待确认...';
         iconData = Icons.hourglass_empty;
         break;
       case ConnectionStatus.connected:
         backgroundColor = Colors.green.withOpacity(0.2);
-        textColor = Colors.green.shade400;
+        textColor = Colors.green;
         statusText = '已连接';
-        iconData = Icons.check_circle;
+        iconData = Icons.cloud_done;
         break;
       case ConnectionStatus.failed:
         backgroundColor = Colors.red.withOpacity(0.2);
-        textColor = Colors.red.shade400;
+        textColor = Colors.red;
         statusText = '连接失败';
-        iconData = Icons.error;
+        iconData = Icons.error_outline;
+        break;
+      case ConnectionStatus.cancelled:
+        backgroundColor = Colors.grey.withOpacity(0.2);
+        textColor = Colors.grey;
+        statusText = '已取消';
+        iconData = Icons.cancel_outlined;
         break;
     }
 
     // 如果已连接，显示远程设备名称
-    if (connectionState.status == ConnectionStatus.connected && 
+    if (connectionState.status == ConnectionStatus.connected &&
         connectionState.remoteDeviceName != null) {
       statusText = '已连接到 ${connectionState.remoteDeviceName}';
     }
@@ -92,4 +99,4 @@ class ConnectionStatusWidget extends StatelessWidget {
       ),
     );
   }
-} 
+}

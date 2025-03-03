@@ -5,6 +5,7 @@ import 'package:bifrost_transfer/ui/screens/home_screen.dart';
 import 'package:bifrost_transfer/application/states/connection_state_notifier.dart';
 import 'package:bifrost_transfer/application/models/connection_model.dart';
 import 'package:bifrost_transfer/application/models/device_info_model.dart';
+import 'package:bifrost_transfer/application/models/connection_status.dart';
 
 // 创建一个简单的模拟ConnectionStateNotifier
 class TestConnectionStateNotifier extends ChangeNotifier

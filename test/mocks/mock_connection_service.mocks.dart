@@ -7,12 +7,14 @@ import 'dart:async' as _i4;
 
 import 'package:bifrost_transfer/application/models/connection_model.dart'
     as _i5;
+import 'package:bifrost_transfer/application/models/connection_status.dart'
+    as _i6;
 import 'package:bifrost_transfer/application/models/device_info_model.dart'
     as _i2;
 import 'package:bifrost_transfer/application/services/connection_service.dart'
     as _i3;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i6;
+import 'package:mockito/src/dummies.dart' as _i7;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -59,6 +61,33 @@ class MockConnectionService extends _i1.Mock implements _i3.ConnectionService {
           as _i4.Stream<Map<String, dynamic>>);
 
   @override
+  _i4.Stream<_i6.ConnectionStatus> get connectionStatusStream =>
+      (super.noSuchMethod(
+            Invocation.getter(#connectionStatusStream),
+            returnValue: _i4.Stream<_i6.ConnectionStatus>.empty(),
+          )
+          as _i4.Stream<_i6.ConnectionStatus>);
+
+  @override
+  _i6.ConnectionStatus get currentStatus =>
+      (super.noSuchMethod(
+            Invocation.getter(#currentStatus),
+            returnValue: _i6.ConnectionStatus.disconnected,
+          )
+          as _i6.ConnectionStatus);
+
+  @override
+  _i2.DeviceInfoModel get localDevice =>
+      (super.noSuchMethod(
+            Invocation.getter(#localDevice),
+            returnValue: _FakeDeviceInfoModel_0(
+              this,
+              Invocation.getter(#localDevice),
+            ),
+          )
+          as _i2.DeviceInfoModel);
+
+  @override
   _i4.Future<_i2.DeviceInfoModel> getLocalDeviceInfo() =>
       (super.noSuchMethod(
             Invocation.method(#getLocalDeviceInfo, []),
@@ -76,7 +105,7 @@ class MockConnectionService extends _i1.Mock implements _i3.ConnectionService {
       (super.noSuchMethod(
             Invocation.method(#initiateConnection, [targetIp]),
             returnValue: _i4.Future<String>.value(
-              _i6.dummyValue<String>(
+              _i7.dummyValue<String>(
                 this,
                 Invocation.method(#initiateConnection, [targetIp]),
               ),
@@ -120,19 +149,47 @@ class MockConnectionService extends _i1.Mock implements _i3.ConnectionService {
           as _i4.Future<void>);
 
   @override
+  _i4.Future<void> init() =>
+      (super.noSuchMethod(
+            Invocation.method(#init, []),
+            returnValue: _i4.Future<void>.value(),
+            returnValueForMissingStub: _i4.Future<void>.value(),
+          )
+          as _i4.Future<void>);
+
+  @override
+  _i4.Future<bool> connectToDevice(String? ip, {int? port}) =>
+      (super.noSuchMethod(
+            Invocation.method(#connectToDevice, [ip], {#port: port}),
+            returnValue: _i4.Future<bool>.value(false),
+          )
+          as _i4.Future<bool>);
+
+  @override
+  _i4.Future<void> disconnectFromDevice() =>
+      (super.noSuchMethod(
+            Invocation.method(#disconnectFromDevice, []),
+            returnValue: _i4.Future<void>.value(),
+            returnValueForMissingStub: _i4.Future<void>.value(),
+          )
+          as _i4.Future<void>);
+
+  @override
   _i4.Future<void> simulateIncomingConnectionRequest(
-    String? deviceIp,
-    String? deviceName,
-    String? pairingCode,
+    _i2.DeviceInfoModel? remoteDevice,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#simulateIncomingConnectionRequest, [
-              deviceIp,
-              deviceName,
-              pairingCode,
+              remoteDevice,
             ]),
             returnValue: _i4.Future<void>.value(),
             returnValueForMissingStub: _i4.Future<void>.value(),
           )
           as _i4.Future<void>);
+
+  @override
+  void dispose() => super.noSuchMethod(
+    Invocation.method(#dispose, []),
+    returnValueForMissingStub: null,
+  );
 }

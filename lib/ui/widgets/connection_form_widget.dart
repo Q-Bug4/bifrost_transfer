@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../application/models/connection_model.dart';
 import '../../application/states/connection_state_notifier.dart';
 import 'package:flutter/services.dart';
+import '../../application/models/connection_status.dart';
 
 /// 连接表单组件
 class ConnectionFormWidget extends StatefulWidget {

@@ -66,10 +66,7 @@ class TextTransferServiceImpl implements TextTransferService {
 
     try {
       // 发送请求
-      final success = await _socketService.sendMessage(message);
-      if (!success) {
-        throw Exception('发送文本传输请求失败');
-      }
+      await _socketService.sendMessage(message);
 
       // 更新状态为传输中
       final updatedTransfer = textTransfer.copyWith(
