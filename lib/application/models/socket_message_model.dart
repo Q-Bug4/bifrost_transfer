@@ -24,6 +24,9 @@ enum SocketMessageType {
   /// 文件传输响应
   FILE_TRANSFER_RESPONSE,
 
+  /// 文件传输数据
+  FILE_TRANSFER_DATA,
+
   /// 文件传输进度
   FILE_TRANSFER_PROGRESS,
 
@@ -211,6 +214,24 @@ class SocketMessageModel {
         'accepted': accepted,
         'fileName': fileName,
         if (rejectReason != null) 'rejectReason': rejectReason,
+      },
+    );
+  }
+
+  /// 创建文件传输数据消息
+  static SocketMessageModel createFileTransferDataMessage({
+    required String transferId,
+    required String fileName,
+    required String data,
+    required int offset,
+  }) {
+    return SocketMessageModel(
+      type: SocketMessageType.FILE_TRANSFER_DATA,
+      data: {
+        'transferId': transferId,
+        'fileName': fileName,
+        'data': data,
+        'offset': offset,
       },
     );
   }

@@ -236,6 +236,9 @@ class FileTransferServiceImpl implements FileTransferService {
       case SocketMessageType.FILE_TRANSFER_RESPONSE:
         _handleFileTransferResponse(message.data);
         break;
+      case SocketMessageType.FILE_TRANSFER_DATA:
+        _handleFileTransferData(message.data);
+        break;
       case SocketMessageType.FILE_TRANSFER_PROGRESS:
         _handleFileTransferProgress(message.data);
         break;
@@ -340,6 +343,83 @@ class FileTransferServiceImpl implements FileTransferService {
     }
   }
 
+  /// 处理文件传输数据
+  void _handleFileTransferData(Map<String, dynamic> data) async {
+    final transferId = data['transferId'] as String;
+    final fileName = data['fileName'] as String;
+    final fileTransfer = _activeTransfers[transferId];
+    if (fileTransfer == null) {
+      _logger.warning('收到未知文件传输的数据: $transferId');
+      return;
+    }
+
+    try {
+      // 更新状态为传输中
+      final updatedTransfer = fileTransfer.copyWith(
+        status: FileTransferStatus.transferring,
+      );
+      _activeTransfers[transferId] = updatedTransfer;
+      _notifyFileTransferUpdate(updatedTransfer);
+
+      // 解码文件数据
+      final fileData = base64.decode(data['data'] as String);
+      final offset = data['offset'] as int;
+
+      // 写入文件数据
+      final file = File(fileTransfer.filePath);
+      final raf = await file.open(mode: FileMode.writeOnlyAppend);
+      await raf.setPosition(offset);
+      await raf.writeFrom(fileData);
+      await raf.close();
+
+      // 更新传输进度
+      final now = DateTime.now();
+      final duration = now.difference(fileTransfer.startTime).inSeconds;
+      final speed = duration > 0 ? (offset + fileData.length) / duration : 0.0;
+
+      final progressTransfer = updatedTransfer.copyWith(
+        bytesTransferred: offset + fileData.length,
+        transferSpeed: speed,
+      );
+      _activeTransfers[transferId] = progressTransfer;
+      _notifyFileTransferUpdate(progressTransfer);
+
+      // 如果传输完成，发送完成消息
+      if (progressTransfer.bytesTransferred >= progressTransfer.fileSize) {
+        final completeMessage = SocketMessageModel.createFileTransferComplete(
+          fileName: fileName,
+          filePath: fileTransfer.filePath,
+        );
+        await _socketService.sendMessage(completeMessage);
+
+        final completedTransfer = progressTransfer.copyWith(
+          status: FileTransferStatus.completed,
+          endTime: DateTime.now(),
+        );
+        _activeTransfers[transferId] = completedTransfer;
+        _notifyFileTransferUpdate(completedTransfer);
+      }
+    } catch (e) {
+      _logger.severe('处理文件数据失败: $e');
+
+      // 更新状态为失败
+      final failedTransfer = fileTransfer.copyWith(
+        status: FileTransferStatus.failed,
+        errorMessage: e.toString(),
+        endTime: DateTime.now(),
+      );
+      _activeTransfers[transferId] = failedTransfer;
+      _notifyFileTransferUpdate(failedTransfer);
+
+      // 发送错误消息
+      final errorMessage = SocketMessageModel.createFileTransferErrorMessage(
+        transferId: transferId,
+        errorMessage: e.toString(),
+      );
+      await _socketService.sendMessage(errorMessage);
+    }
+  }
+
   /// 开始文件传输
   Future<void> _startFileTransfer(String transferId) async {
     final fileTransfer = _activeTransfers[transferId];
@@ -371,7 +451,13 @@ class FileTransferServiceImpl implements FileTransferService {
         ),
       )) {
         // 发送文件数据块
-        // TODO: 实现文件数据传输
+        final chunkMessage = SocketMessageModel.createFileTransferDataMessage(
+          transferId: transferId,
+          fileName: fileTransfer.fileName,
+          data: base64.encode(chunk),
+          offset: bytesTransferred,
+        );
+        await _socketService.sendMessage(chunkMessage);
 
         // 更新传输进度
         bytesTransferred += chunk.length;
@@ -383,6 +469,7 @@ class FileTransferServiceImpl implements FileTransferService {
         final updatedTransfer = fileTransfer.copyWith(
           bytesTransferred: bytesTransferred,
           transferSpeed: speed,
+          status: FileTransferStatus.transferring,
         );
         _activeTransfers[transferId] = updatedTransfer;
         _notifyFileTransferUpdate(updatedTransfer);
