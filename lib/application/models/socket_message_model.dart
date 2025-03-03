@@ -36,6 +36,9 @@ enum SocketMessageType {
   /// 文件传输错误
   FILE_TRANSFER_ERROR,
 
+  /// 文件传输恢复
+  FILE_TRANSFER_RESUME,
+
   /// 文本传输请求
   TEXT_TRANSFER_REQUEST,
 
@@ -268,6 +271,28 @@ class SocketMessageModel {
       data: {
         'transferId': transferId,
         'errorMessage': errorMessage,
+      },
+    );
+  }
+
+  /// 创建文件传输恢复消息
+  static SocketMessageModel createFileTransferResumeMessage({
+    required String transferId,
+    required String fileName,
+    required String filePath,
+    required int fileSize,
+    required String fileHash,
+    required int bytesTransferred,
+  }) {
+    return SocketMessageModel(
+      type: SocketMessageType.FILE_TRANSFER_RESUME,
+      data: {
+        'transferId': transferId,
+        'fileName': fileName,
+        'filePath': filePath,
+        'fileSize': fileSize,
+        'fileHash': fileHash,
+        'bytesTransferred': bytesTransferred,
       },
     );
   }

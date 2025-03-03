@@ -6,6 +6,7 @@ import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
 import '../models/file_transfer_model.dart';
 import '../models/socket_message_model.dart';
+import '../models/connection_status.dart';
 import 'file_transfer_service.dart';
 import 'socket_communication_service.dart';
 
@@ -29,13 +30,15 @@ class FileTransferServiceImpl implements FileTransferService {
   /// 消息订阅
   late final StreamSubscription<SocketMessageModel> _messageSubscription;
 
+  /// 连接状态订阅
+  late final StreamSubscription<ConnectionStatus> _connectionStatusSubscription;
+
   /// 构造函数
-  FileTransferServiceImpl({
-    required SocketCommunicationService socketService,
-  }) : _socketService = socketService {
-    _messageSubscription = _socketService.messageStream.listen((message) {
-      _handleMessage(message);
-    });
+  FileTransferServiceImpl(SocketCommunicationService socketService)
+      : _socketService = socketService {
+    _messageSubscription = _socketService.messageStream.listen(_handleMessage);
+    _connectionStatusSubscription = _socketService.connectionStatusStream
+        .listen(_handleConnectionStatusChange);
   }
 
   /// 初始化接收目录
@@ -479,6 +482,25 @@ class FileTransferServiceImpl implements FileTransferService {
     );
     _activeTransfers[transferId] = failedTransfer;
     _notifyFileTransferUpdate(failedTransfer);
+  }
+
+  /// 处理连接状态变化
+  void _handleConnectionStatusChange(ConnectionStatus status) {
+    if (status == ConnectionStatus.disconnected) {
+      // 当连接断开时，更新所有活跃传输的状态
+      for (final transfer in _activeTransfers.values) {
+        if (transfer.status == FileTransferStatus.transferring ||
+            transfer.status == FileTransferStatus.waiting) {
+          final updatedTransfer = transfer.copyWith(
+            status: FileTransferStatus.failed,
+            errorMessage: '连接断开',
+            endTime: DateTime.now(),
+          );
+          _activeTransfers[transfer.transferId] = updatedTransfer;
+          _notifyFileTransferUpdate(updatedTransfer);
+        }
+      }
+    }
   }
 
   /// 计算文件哈希值

@@ -34,9 +34,7 @@ class ServiceLocator {
     );
 
     getIt.registerLazySingleton<FileTransferService>(
-      () => FileTransferServiceImpl(
-        socketService: getIt<SocketCommunicationService>(),
-      ),
+      () => FileTransferServiceImpl(getIt<SocketCommunicationService>()),
     );
 
     getIt.registerLazySingleton<FileTransferStateNotifier>(

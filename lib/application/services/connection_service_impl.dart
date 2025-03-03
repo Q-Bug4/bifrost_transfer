@@ -24,6 +24,9 @@ class ConnectionServiceImpl implements ConnectionService {
   final _connectionRequestController =
       StreamController<Map<String, dynamic>>.broadcast();
 
+  /// 消息控制器
+  final _messageController = StreamController<SocketMessageModel>.broadcast();
+
   /// 当前连接状态
   ConnectionModel _currentConnectionState =
       ConnectionModel(status: ConnectionStatus.disconnected);
@@ -371,6 +374,18 @@ class ConnectionServiceImpl implements ConnectionService {
       case SocketMessageType.DISCONNECT:
         _handleDisconnect(message);
         break;
+      case SocketMessageType.FILE_TRANSFER_REQUEST:
+      case SocketMessageType.FILE_TRANSFER_RESPONSE:
+      case SocketMessageType.FILE_TRANSFER_PROGRESS:
+      case SocketMessageType.FILE_TRANSFER_COMPLETE:
+      case SocketMessageType.FILE_TRANSFER_RESUME:
+        // 这些消息由 FileTransferService 处理
+        _messageController.add(message);
+        break;
+      case SocketMessageType.PING:
+      case SocketMessageType.PONG:
+        // 这些消息由 SocketCommunicationService 处理
+        break;
       default:
         _logger.warning('收到未知类型的消息: ${message.type}');
     }
@@ -378,11 +393,6 @@ class ConnectionServiceImpl implements ConnectionService {
 
   /// 处理连接请求
   void _handleConnectionRequest(SocketMessageModel message) {
-    if (_currentConnectionState.status != ConnectionStatus.disconnected) {
-      _logger.warning('当前状态不是断开连接，无法处理连接请求');
-      return;
-    }
-
     final remoteDeviceName = message.data['deviceName'] as String;
     final remoteIpAddress = message.data['deviceIp'] as String;
     final pairingCode = message.data['pairingCode'] as String;

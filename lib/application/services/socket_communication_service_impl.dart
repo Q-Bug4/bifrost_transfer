@@ -347,6 +347,9 @@ class SocketCommunicationServiceImpl implements SocketCommunicationService {
     if (_isConnected != connected) {
       _isConnected = connected;
       _connectionStateController.add(connected);
+      _connectionStatusController.add(connected
+          ? ConnectionStatus.connected
+          : ConnectionStatus.disconnected);
       _logger.info('连接状态更新: $connected');
     }
   }
