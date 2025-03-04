@@ -49,17 +49,57 @@ class FileTransferServiceImpl implements FileTransferService {
     Directory(_receiveDirectory).createSync(recursive: true);
   }
 
+  /// 格式化文件大小
+  String _formatFileSize(int bytes) {
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    var size = bytes.toDouble();
+    var unitIndex = 0;
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024;
+      unitIndex++;
+    }
+    return '${size.toStringAsFixed(2)} ${units[unitIndex]}';
+  }
+
+  /// 格式化传输速度
+  String _formatTransferSpeed(double bytesPerSecond) {
+    if (bytesPerSecond < 0.1) return '0 B/s';
+    return '${_formatFileSize(bytesPerSecond.toInt())}/s';
+  }
+
+  /// 格式化剩余时间
+  String _formatRemainingTime(double seconds) {
+    if (seconds < 0.1) return '0秒';
+    if (seconds < 60) return '${seconds.toStringAsFixed(0)}秒';
+    if (seconds < 3600) {
+      final minutes = (seconds / 60).floor();
+      final remainingSeconds = (seconds % 60).floor();
+      return '$minutes分${remainingSeconds}秒';
+    }
+    final hours = (seconds / 3600).floor();
+    final minutes = ((seconds % 3600) / 60).floor();
+    return '$hours小时$minutes分';
+  }
+
   @override
   Future<String> sendFile(String filePath) async {
     final file = File(filePath);
     if (!file.existsSync()) {
-      throw FileSystemException('文件不存在', filePath);
+      const error = '文件不存在';
+      _logger.severe('$error: $filePath');
+      throw FileSystemException(error, filePath);
     }
 
     final fileName = path.basename(filePath);
     final fileSize = await file.length();
     final fileHash = await _calculateFileHash(file);
     final transferId = DateTime.now().millisecondsSinceEpoch.toString();
+
+    _logger.info('准备发送文件: $fileName');
+    _logger.info('- 文件大小: ${_formatFileSize(fileSize)}');
+    _logger.info('- 文件路径: $filePath');
+    _logger.info('- 文件哈希: $fileHash');
+    _logger.info('- 传输ID: $transferId');
 
     // 创建文件传输请求消息
     final message = SocketMessageModel.createFileTransferRequest(
@@ -87,9 +127,12 @@ class FileTransferServiceImpl implements FileTransferService {
     try {
       // 发送请求
       await _socketService.sendMessage(message);
+      _logger.fine('已发送文件传输请求: $transferId');
 
       return transferId;
     } catch (e) {
+      _logger.severe('发送文件传输请求失败: $e');
+
       // 更新状态为失败
       final failedTransfer = fileTransfer.copyWith(
         status: FileTransferStatus.failed,
@@ -99,7 +142,6 @@ class FileTransferServiceImpl implements FileTransferService {
       _activeTransfers[transferId] = failedTransfer;
       _notifyFileTransferUpdate(failedTransfer);
 
-      _logger.severe('发送文件失败: $e');
       rethrow;
     }
   }
@@ -365,6 +407,11 @@ class FileTransferServiceImpl implements FileTransferService {
       final fileData = base64.decode(data['data'] as String);
       final offset = data['offset'] as int;
 
+      _logger.fine('接收文件数据:');
+      _logger.fine('- 文件名: $fileName');
+      _logger.fine('- 偏移量: ${_formatFileSize(offset)}');
+      _logger.fine('- 数据大小: ${_formatFileSize(fileData.length)}');
+
       // 写入文件数据
       final file = File(fileTransfer.filePath);
       final raf = await file.open(mode: FileMode.writeOnlyAppend);
@@ -398,9 +445,17 @@ class FileTransferServiceImpl implements FileTransferService {
         );
         _activeTransfers[transferId] = completedTransfer;
         _notifyFileTransferUpdate(completedTransfer);
+
+        _logger.info('文件接收完成:');
+        _logger.info('- 文件名: $fileName');
+        _logger.info('- 总大小: ${_formatFileSize(fileTransfer.fileSize)}');
+        _logger.info('- 总用时: ${_formatRemainingTime(duration.toDouble())}');
+        _logger.info('- 平均速度: ${_formatTransferSpeed(speed)}');
       }
     } catch (e) {
-      _logger.severe('处理文件数据失败: $e');
+      _logger.severe('处理文件数据失败:');
+      _logger.severe('- 文件名: $fileName');
+      _logger.severe('- 错误信息: $e');
 
       // 更新状态为失败
       final failedTransfer = fileTransfer.copyWith(
@@ -426,11 +481,17 @@ class FileTransferServiceImpl implements FileTransferService {
     if (fileTransfer == null) return;
 
     try {
+      _logger.info('开始传输文件: ${fileTransfer.fileName}');
+      _logger.info('- 文件大小: ${_formatFileSize(fileTransfer.fileSize)}');
+      _logger.info(
+          '- 传输方向: ${fileTransfer.direction == FileTransferDirection.sending ? '发送' : '接收'}');
+
       final file = File(fileTransfer.filePath);
       final fileStream = file.openRead();
-      final chunkSize = 1024 * 1024; // 1MB
+      final chunkSize = 512 * 1024; // 512KB
       var bytesTransferred = 0;
       var startTime = DateTime.now();
+      var lastProgressLogTime = startTime;
 
       await for (final chunk in fileStream.transform(
         StreamTransformer<List<int>, List<int>>.fromHandlers(
@@ -474,6 +535,26 @@ class FileTransferServiceImpl implements FileTransferService {
         _activeTransfers[transferId] = updatedTransfer;
         _notifyFileTransferUpdate(updatedTransfer);
 
+        // 每秒最多记录一次进度日志
+        if (now.difference(lastProgressLogTime).inSeconds >= 1) {
+          final progress = (bytesTransferred / fileTransfer.fileSize * 100)
+              .toStringAsFixed(1);
+          final remainingBytes =
+              (fileTransfer.fileSize - bytesTransferred).toDouble();
+          final speedDouble = speed.toDouble();
+          final remainingTime =
+              speedDouble > 0 ? remainingBytes / speedDouble : 0.0;
+
+          _logger.fine('文件传输进度:');
+          _logger.fine('- 文件名: ${fileTransfer.fileName}');
+          _logger.fine(
+              '- 已传输: ${_formatFileSize(bytesTransferred)} / ${_formatFileSize(fileTransfer.fileSize)} ($progress%)');
+          _logger.fine('- 传输速度: ${_formatTransferSpeed(speed)}');
+          _logger.fine('- 预计剩余时间: ${_formatRemainingTime(remainingTime)}');
+
+          lastProgressLogTime = now;
+        }
+
         // 发送进度消息
         final progressMessage = SocketMessageModel.createFileTransferProgress(
           fileName: fileTransfer.fileName,
@@ -499,8 +580,21 @@ class FileTransferServiceImpl implements FileTransferService {
       );
       _activeTransfers[transferId] = completedTransfer;
       _notifyFileTransferUpdate(completedTransfer);
+
+      final duration =
+          completedTransfer.endTime!.difference(startTime).inSeconds;
+      final averageSpeed =
+          duration > 0 ? (fileTransfer.fileSize / duration).toDouble() : 0.0;
+
+      _logger.info('文件传输完成:');
+      _logger.info('- 文件名: ${fileTransfer.fileName}');
+      _logger.info('- 总大小: ${_formatFileSize(fileTransfer.fileSize)}');
+      _logger.info('- 总用时: ${_formatRemainingTime(duration.toDouble())}');
+      _logger.info('- 平均速度: ${_formatTransferSpeed(averageSpeed)}');
     } catch (e) {
-      _logger.severe('文件传输失败: $e');
+      _logger.severe('文件传输失败:');
+      _logger.severe('- 文件名: ${fileTransfer.fileName}');
+      _logger.severe('- 错误信息: $e');
 
       // 更新状态为失败
       final failedTransfer = fileTransfer.copyWith(
