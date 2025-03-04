@@ -63,6 +63,9 @@ enum SocketMessageType {
   /// 断开连接
   DISCONNECT,
 
+  /// 连接丢失
+  CONNECTION_LOST,
+
   /// 错误消息
   ERROR,
 }
@@ -415,6 +418,18 @@ class SocketMessageModel {
       type: SocketMessageType.DISCONNECT,
       data: {
         if (reason != null) 'reason': reason,
+      },
+    );
+  }
+
+  /// 创建连接丢失消息
+  static SocketMessageModel createConnectionLost({
+    required String reason,
+  }) {
+    return SocketMessageModel(
+      type: SocketMessageType.CONNECTION_LOST,
+      data: {
+        'reason': reason,
       },
     );
   }

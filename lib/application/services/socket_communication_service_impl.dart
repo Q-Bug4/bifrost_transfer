@@ -146,31 +146,43 @@ class SocketCommunicationServiceImpl implements SocketCommunicationService {
 
   @override
   Future<void> disconnectFromDevice() async {
+    if (!_isConnected) {
+      return;
+    }
+
+    _logger.info('正在断开与远程设备的连接');
+
     // 停止心跳检测
     _stopHeartbeat();
 
     // 发送断开连接消息
-    if (_clientSocket != null && _isConnected) {
-      try {
-        final disconnectMessage = SocketMessageModel.createDisconnect(
-          reason: '用户主动断开连接',
-        );
+    try {
+      final disconnectMessage = SocketMessageModel.createDisconnect(
+        reason: '用户主动断开连接',
+      );
+      await sendMessage(disconnectMessage);
 
-        await sendMessage(disconnectMessage);
-
-        // 等待一小段时间，确保消息发送完成
-        await Future.delayed(const Duration(milliseconds: 100));
-      } catch (e) {
-        _logger.warning('发送断开连接消息失败: $e');
-      }
+      // 等待一小段时间，确保消息发送完成
+      await Future.delayed(const Duration(milliseconds: 100));
+    } catch (e) {
+      _logger.warning('发送断开连接消息失败: $e');
     }
-
-    // 关闭Socket
-    await _clientSocket?.close();
-    _clientSocket = null;
 
     // 更新连接状态
     _updateConnectionStatus(false);
+
+    // 关闭Socket
+    if (_clientSocket != null) {
+      try {
+        await _clientSocket!.close();
+        _clientSocket = null;
+      } catch (e) {
+        _logger.warning('关闭Socket时出错: $e');
+        // 如果关闭失败，强制销毁
+        _clientSocket?.destroy();
+        _clientSocket = null;
+      }
+    }
 
     _logger.info('已断开与远程设备的连接');
   }
@@ -334,12 +346,31 @@ class SocketCommunicationServiceImpl implements SocketCommunicationService {
     // 停止心跳检测
     _stopHeartbeat();
 
-    // 关闭Socket
-    _clientSocket?.close();
-    _clientSocket = null;
-
-    // 更新连接状态
+    // 标记连接状态为断开，这样其他组件可以先处理
     _updateConnectionStatus(false);
+
+    // 发送最后的错误消息到消息流
+    try {
+      final errorMessage = SocketMessageModel.createConnectionLost(
+        reason: '连接意外断开',
+      );
+      _messageController.add(errorMessage);
+    } catch (e) {
+      _logger.severe('发送连接断开消息失败: $e');
+    }
+
+    // 等待一小段时间，让其他组件有机会处理连接断开
+    Future.delayed(const Duration(milliseconds: 100), () {
+      // 关闭Socket
+      if (_clientSocket != null) {
+        try {
+          _clientSocket!.destroy();
+          _clientSocket = null;
+        } catch (e) {
+          _logger.warning('关闭Socket时出错: $e');
+        }
+      }
+    });
   }
 
   /// 更新连接状态
