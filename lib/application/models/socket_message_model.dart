@@ -209,6 +209,8 @@ class SocketMessageModel {
   static SocketMessageModel createFileTransferResponse({
     required bool accepted,
     required String fileName,
+    required int fileSize,
+    required String fileHash,
     String? rejectReason,
   }) {
     return SocketMessageModel(
@@ -216,6 +218,8 @@ class SocketMessageModel {
       data: {
         'accepted': accepted,
         'fileName': fileName,
+        'fileSize': fileSize,
+        'fileHash': fileHash,
         if (rejectReason != null) 'rejectReason': rejectReason,
       },
     );
@@ -261,12 +265,16 @@ class SocketMessageModel {
   static SocketMessageModel createFileTransferComplete({
     required String fileName,
     required String filePath,
+    required int fileSize,
+    required String fileHash,
   }) {
     return SocketMessageModel(
       type: SocketMessageType.FILE_TRANSFER_COMPLETE,
       data: {
         'fileName': fileName,
         'filePath': filePath,
+        'fileSize': fileSize,
+        'fileHash': fileHash,
       },
     );
   }
@@ -444,6 +452,18 @@ class SocketMessageModel {
       data: {
         'errorCode': errorCode,
         'errorMessage': errorMessage,
+      },
+    );
+  }
+
+  /// 创建文件传输数据块消息
+  static SocketMessageModel createFileTransferChunk({
+    required List<int> data,
+  }) {
+    return SocketMessageModel(
+      type: SocketMessageType.FILE_TRANSFER_DATA,
+      data: {
+        'data': base64.encode(data),
       },
     );
   }

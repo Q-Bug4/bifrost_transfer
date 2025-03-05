@@ -75,13 +75,12 @@ class MockSocketCommunicationService extends _i1.Mock
           as _i3.Future<void>);
 
   @override
-  _i3.Future<void> sendMessage(_i4.SocketMessageModel? message) =>
+  _i3.Future<bool> sendMessage(_i4.SocketMessageModel? message) =>
       (super.noSuchMethod(
             Invocation.method(#sendMessage, [message]),
-            returnValue: _i3.Future<void>.value(),
-            returnValueForMissingStub: _i3.Future<void>.value(),
+            returnValue: _i3.Future<bool>.value(false),
           )
-          as _i3.Future<void>);
+          as _i3.Future<bool>);
 
   @override
   _i3.Future<void> close() =>
