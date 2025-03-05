@@ -141,11 +141,7 @@ class ConnectionServiceImpl implements ConnectionService {
   Future<void> _sendConnectionResponse(
       SocketMessageModel connectionResponseMessage) async {
     try {
-      final success =
-          await _socketService.sendMessage(connectionResponseMessage);
-      if (!success) {
-        throw Exception('发送连接响应消息失败');
-      }
+      await _socketService.sendMessage(connectionResponseMessage);
       _logger.info('发送连接响应消息成功');
     } catch (e) {
       _logger.severe('发送连接响应消息失败: $e');
@@ -157,11 +153,7 @@ class ConnectionServiceImpl implements ConnectionService {
   Future<void> _sendConnectionRequest(
       SocketMessageModel connectionRequestMessage) async {
     try {
-      final success =
-          await _socketService.sendMessage(connectionRequestMessage);
-      if (!success) {
-        throw Exception('发送连接请求消息失败');
-      }
+      await _socketService.sendMessage(connectionRequestMessage);
       _logger.info('发送连接请求消息成功');
     } catch (e) {
       _logger.severe('发送连接请求消息失败: $e');

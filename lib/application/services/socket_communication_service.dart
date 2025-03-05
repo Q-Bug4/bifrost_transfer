@@ -8,7 +8,7 @@ abstract class SocketCommunicationService {
   Future<void> init();
 
   /// 发送消息
-  Future<bool> sendMessage(SocketMessageModel message);
+  Future<void> sendMessage(SocketMessageModel message);
 
   /// 接收消息流
   Stream<SocketMessageModel> get messageStream;

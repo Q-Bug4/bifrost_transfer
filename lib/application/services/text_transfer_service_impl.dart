@@ -104,10 +104,7 @@ class TextTransferServiceImpl implements TextTransferService {
       final message = SocketMessageModel.createTextTransferCancelMessage(
         transferId: transferId,
       );
-      final success = await _socketService.sendMessage(message);
-      if (!success) {
-        throw Exception('发送文本传输取消消息失败');
-      }
+      await _socketService.sendMessage(message);
 
       // 更新状态为已取消
       final cancelledTransfer = textTransfer.copyWith(
@@ -196,17 +193,47 @@ class TextTransferServiceImpl implements TextTransferService {
   /// 接受文本传输请求
   Future<void> _acceptTextTransfer(String transferId) async {
     try {
-      final message = SocketMessageModel.createTextTransferResponseMessage(
+      // 发送接受响应
+      final responseMessage =
+          SocketMessageModel.createTextTransferResponseMessage(
         transferId: transferId,
         accepted: true,
       );
-      final success = await _socketService.sendMessage(message);
-      if (!success) {
-        throw Exception('发送文本传输响应消息失败');
+      await _socketService.sendMessage(responseMessage);
+
+      // 更新状态为已完成
+      final textTransfer = _activeTextTransfers[transferId];
+      if (textTransfer != null) {
+        final completedTransfer = textTransfer.copyWith(
+          status: TextTransferStatus.completed,
+          processedLength: textTransfer.textLength,
+          endTime: DateTime.now(),
+        );
+        _activeTextTransfers[transferId] = completedTransfer;
+        _notifyTextTransferUpdate(completedTransfer);
       }
+
+      // 发送完成消息
+      final completeMessage =
+          SocketMessageModel.createTextTransferCompleteMessage(
+        transferId: transferId,
+        text: textTransfer?.text ?? '',
+      );
+      await _socketService.sendMessage(completeMessage);
     } catch (e) {
-      _logger.severe('接受文本传输请求失败: $e');
-      rethrow;
+      _logger.severe('接受文本传输失败: $e');
+
+      // 更新状态为失败
+      final textTransfer = _activeTextTransfers[transferId];
+      if (textTransfer != null) {
+        final failedTransfer = textTransfer.copyWith(
+          status: TextTransferStatus.failed,
+          errorMessage: e.toString(),
+          endTime: DateTime.now(),
+        );
+        _activeTextTransfers[transferId] = failedTransfer;
+        _notifyTextTransferUpdate(failedTransfer);
+      }
     }
   }
 

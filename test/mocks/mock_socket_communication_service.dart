@@ -10,4 +10,4 @@ import 'package:bifrost_transfer/application/models/socket_message_model.dart';
 export 'mock_socket_communication_service.mocks.dart';
 
 // 这个类不再需要，由build_runner自动生成
-// class _MockSocketCommunicationService extends Mock implements SocketCommunicationService {}
+// class _MockSocketCommunicationService extends Mock implements SocketCommunicationService {} 

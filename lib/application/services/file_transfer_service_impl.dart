@@ -25,7 +25,7 @@ class FileTransferServiceImpl implements FileTransferService {
   final _transferController = StreamController<FileTransferModel>.broadcast();
 
   /// 接收文件的目录
-  String? _receiveDirectory;
+  String _receiveDirectory = '${Platform.environment['HOME']}/Downloads';
 
   /// 消息订阅
   late final StreamSubscription<SocketMessageModel> _messageSubscription;
@@ -43,18 +43,31 @@ class FileTransferServiceImpl implements FileTransferService {
   }
 
   /// 初始化接收目录
-  Future<void> _initReceiveDirectory() async {
-    if (_receiveDirectory == null || _receiveDirectory!.isEmpty) {
-      final defaultDir = await _getDefaultReceiveDirectory();
-      await setReceiveDirectory(defaultDir);
+  void _initReceiveDirectory() {
+    String? baseDir;
+    if (Platform.isWindows) {
+      baseDir = Platform.environment['USERPROFILE'];
+    } else {
+      baseDir = Platform.environment['HOME'];
     }
 
-    // 确保目录存在
-    final dir = Directory(_receiveDirectory!);
-    if (!dir.existsSync()) {
-      _logger.info('创建接收目录: $_receiveDirectory');
-      await dir.create(recursive: true);
+    if (baseDir == null) {
+      _logger.severe('无法获取用户主目录');
+      baseDir = Directory.current.path;
+    }
+
+    _receiveDirectory = path.join(baseDir, 'Downloads', 'Bifrost');
+    _logger.info('初始化接收目录: $_receiveDirectory');
+
+    try {
+      Directory(_receiveDirectory).createSync(recursive: true);
       _logger.info('成功创建接收目录');
+    } catch (e) {
+      _logger.severe('创建接收目录失败: $e');
+      // 使用临时目录作为备选
+      _receiveDirectory = path.join(Directory.systemTemp.path, 'Bifrost');
+      Directory(_receiveDirectory).createSync(recursive: true);
+      _logger.info('使用临时目录作为备选: $_receiveDirectory');
     }
   }
 
@@ -268,33 +281,31 @@ class FileTransferServiceImpl implements FileTransferService {
 
   @override
   Future<void> setReceiveDirectory(String directory) async {
-    _logger.info('初始化接收目录: $directory');
-    _receiveDirectory = directory;
-
-    // 确保目录存在
     final dir = Directory(directory);
     if (!dir.existsSync()) {
-      await dir.create(recursive: true);
-      _logger.info('成功创建接收目录');
+      _logger.severe('设置接收目录失败：目录不存在 - $directory');
+      throw FileSystemException('目录不存在', directory);
     }
+    _receiveDirectory = directory;
+    _logger.info('设置接收目录: $directory');
   }
 
   @override
   String getReceiveDirectory() {
-    return _receiveDirectory ?? '';
+    return _receiveDirectory;
   }
 
   /// 处理接收到的消息
   void _handleMessage(SocketMessageModel message) {
     switch (message.type) {
       case SocketMessageType.FILE_TRANSFER_REQUEST:
-        _handleFileTransferRequest(message);
+        _handleFileTransferRequest(message.data);
         break;
       case SocketMessageType.FILE_TRANSFER_RESPONSE:
         _handleFileTransferResponse(message.data);
         break;
       case SocketMessageType.FILE_TRANSFER_DATA:
-        _handleFileTransferData(message);
+        _handleFileTransferData(message.data);
         break;
       case SocketMessageType.FILE_TRANSFER_PROGRESS:
         _handleFileTransferProgress(message.data);
@@ -315,43 +326,76 @@ class FileTransferServiceImpl implements FileTransferService {
   }
 
   /// 处理文件传输请求
-  Future<void> _handleFileTransferRequest(SocketMessageModel message) async {
-    final fileName = message.data['fileName'] as String;
-    final fileSize = message.data['fileSize'] as int;
-    final fileHash = message.data['fileHash'] as String;
-    final transferId = message.data['transferId'] as String;
+  void _handleFileTransferRequest(Map<String, dynamic> data) async {
+    final fileName = data['fileName'] as String;
+    final fileSize = data['fileSize'] as int;
+    final fileHash = data['fileHash'] as String;
 
-    // 确保接收目录已初始化
-    await _initReceiveDirectory();
+    // 使用 path.join 确保跨平台路径正确性
+    final filePath = path.join(_receiveDirectory, fileName);
 
-    final filePath = '$_receiveDirectory/$fileName';
+    // 确保父目录存在
+    final parentDir = Directory(path.dirname(filePath));
+    if (!parentDir.existsSync()) {
+      parentDir.createSync(recursive: true);
+    }
+
+    final transferId = DateTime.now().millisecondsSinceEpoch.toString();
+
     _logger.info('收到文件传输请求:');
     _logger.info('- 文件名: $fileName');
     _logger.info('- 文件大小: ${_formatFileSize(fileSize)}');
     _logger.info('- 保存路径: $filePath');
 
-    final transfer = FileTransferModel(
+    // 创建文件传输模型
+    final fileTransfer = FileTransferModel(
       transferId: transferId,
       fileName: fileName,
       filePath: filePath,
       fileSize: fileSize,
       fileHash: fileHash,
+      status: FileTransferStatus.waiting,
       direction: FileTransferDirection.receiving,
     );
 
-    _activeTransfers[transferId] = transfer;
-    _transferController.add(transfer);
+    // 添加到活跃传输列表
+    _activeTransfers[transferId] = fileTransfer;
+    _notifyFileTransferUpdate(fileTransfer);
 
-    // 发送接受响应
-    final response = SocketMessageModel.createFileTransferResponse(
-      fileName: fileName,
-      fileSize: fileSize,
-      fileHash: fileHash,
-      accepted: true,
-    );
-    final success = await _socketService.sendMessage(response);
-    if (!success) {
-      throw Exception('发送文件传输响应消息失败');
+    // 自动接受文件传输请求
+    _acceptFileTransfer(transferId);
+  }
+
+  /// 接受文件传输请求
+  Future<void> _acceptFileTransfer(String transferId) async {
+    final fileTransfer = _activeTransfers[transferId];
+    if (fileTransfer == null) return;
+
+    try {
+      // 发送接受响应
+      final responseMessage = SocketMessageModel.createFileTransferResponse(
+        accepted: true,
+        fileName: fileTransfer.fileName,
+      );
+      await _socketService.sendMessage(responseMessage);
+
+      // 更新状态为传输中
+      final updatedTransfer = fileTransfer.copyWith(
+        status: FileTransferStatus.transferring,
+      );
+      _activeTransfers[transferId] = updatedTransfer;
+      _notifyFileTransferUpdate(updatedTransfer);
+    } catch (e) {
+      _logger.severe('接受文件传输失败: $e');
+
+      // 更新状态为失败
+      final failedTransfer = fileTransfer.copyWith(
+        status: FileTransferStatus.failed,
+        errorMessage: e.toString(),
+        endTime: DateTime.now(),
+      );
+      _activeTransfers[transferId] = failedTransfer;
+      _notifyFileTransferUpdate(failedTransfer);
     }
   }
 
@@ -382,65 +426,85 @@ class FileTransferServiceImpl implements FileTransferService {
   }
 
   /// 处理文件传输数据
-  void _handleFileTransferData(SocketMessageModel message) {
-    final transferId = message.data['transferId']?.toString();
-    if (transferId == null) {
-      _logger.warning('收到的文件数据中没有transferId');
-      return;
-    }
-    final transfer = _activeTransfers[transferId];
-    if (transfer == null) {
-      _logger.warning('收到未知传输ID的文件数据: $transferId');
+  void _handleFileTransferData(Map<String, dynamic> data) async {
+    final transferId = data['transferId'] as String;
+    final fileName = data['fileName'] as String;
+    final fileTransfer = _activeTransfers[transferId];
+    if (fileTransfer == null) {
+      _logger.warning('收到未知文件传输的数据: $transferId');
       return;
     }
 
     try {
-      if (transfer.isReceiving) {
-        final filePath = transfer.filePath;
-        final file = File(filePath);
-        final data = message.data['data'] as List<int>;
+      // 更新状态为传输中
+      final updatedTransfer = fileTransfer.copyWith(
+        status: FileTransferStatus.transferring,
+      );
+      _activeTransfers[transferId] = updatedTransfer;
+      _notifyFileTransferUpdate(updatedTransfer);
 
-        // 确保目录存在
-        final dir = file.parent;
-        if (!dir.existsSync()) {
-          dir.createSync(recursive: true);
-        }
+      // 解码文件数据
+      final fileData = base64.decode(data['data'] as String);
+      final offset = data['offset'] as int;
 
-        // 写入文件数据
-        file.writeAsBytesSync(data, mode: FileMode.write);
+      _logger.info('接收文件数据:');
+      _logger.info('- 文件名: $fileName');
+      _logger.info('- 偏移量: ${_formatFileSize(offset)}');
+      _logger.info('- 数据大小: ${_formatFileSize(fileData.length)}');
 
-        _logger.info('接收文件数据: ${transfer.fileName}');
-        _logger.info('保存到: ${transfer.filePath}');
-      }
+      // 写入文件数据
+      final file = File(fileTransfer.filePath);
+      final raf = await file.open(mode: FileMode.write);
+      await raf.setPosition(offset);
+      await raf.writeFrom(fileData);
+      await raf.close();
 
       // 更新传输进度
-      final newBytesTransferred = transfer.bytesTransferred +
-          (message.data['data'] as List<int>).length;
       final now = DateTime.now();
-      final duration = now.difference(transfer.startTime).inSeconds;
-      final speed = duration > 0 ? newBytesTransferred / duration : 0;
+      final duration = now.difference(fileTransfer.startTime).inSeconds;
+      final speed = duration > 0 ? (offset + fileData.length) / duration : 0.0;
 
-      final updatedTransfer = transfer.copyWith(
-        bytesTransferred: newBytesTransferred,
-        status: newBytesTransferred >= transfer.fileSize
-            ? FileTransferStatus.completed
-            : FileTransferStatus.transferring,
-        transferSpeed: speed.toDouble(),
+      final progressTransfer = updatedTransfer.copyWith(
+        bytesTransferred: offset + fileData.length,
+        transferSpeed: speed,
       );
-
-      _activeTransfers[transferId] = updatedTransfer;
-      _transferController.add(updatedTransfer);
+      _activeTransfers[transferId] = progressTransfer;
+      _notifyFileTransferUpdate(progressTransfer);
 
       // 如果传输完成，发送完成消息
-      if (updatedTransfer.isCompleted) {
-        _handleFileTransferComplete({
-          'transferId': transferId,
-          'fileName': updatedTransfer.fileName,
-        });
+      if (progressTransfer.bytesTransferred >= progressTransfer.fileSize) {
+        final completeMessage = SocketMessageModel.createFileTransferComplete(
+          fileName: fileName,
+          filePath: fileTransfer.filePath,
+        );
+        await _socketService.sendMessage(completeMessage);
+
+        final completedTransfer = progressTransfer.copyWith(
+          status: FileTransferStatus.completed,
+          endTime: DateTime.now(),
+        );
+        _activeTransfers[transferId] = completedTransfer;
+        _notifyFileTransferUpdate(completedTransfer);
+
+        _logger.info('文件接收完成:');
+        _logger.info('- 文件名: $fileName');
+        _logger.info('- 总大小: ${_formatFileSize(fileTransfer.fileSize)}');
+        _logger.info('- 总用时: ${_formatRemainingTime(duration.toDouble())}');
+        _logger.info('- 平均速度: ${_formatTransferSpeed(speed)}');
       }
     } catch (e) {
-      _logger.severe('处理文件数据失败: $e');
-      _handleTransferError(transferId, '文件写入失败: $e');
+      _logger.severe('处理文件数据失败:');
+      _logger.severe('- 文件名: $fileName');
+      _logger.severe('- 错误信息: $e');
+
+      // 更新状态为失败
+      final failedTransfer = fileTransfer.copyWith(
+        status: FileTransferStatus.failed,
+        errorMessage: e.toString(),
+        endTime: DateTime.now(),
+      );
+      _activeTransfers[transferId] = failedTransfer;
+      _notifyFileTransferUpdate(failedTransfer);
     }
   }
 
@@ -481,8 +545,11 @@ class FileTransferServiceImpl implements FileTransferService {
         ),
       )) {
         // 发送文件数据块
-        final chunkMessage = SocketMessageModel.createFileTransferChunk(
-          data: chunk,
+        final chunkMessage = SocketMessageModel.createFileTransferDataMessage(
+          transferId: transferId,
+          fileName: fileTransfer.fileName,
+          data: base64.encode(chunk),
+          offset: bytesTransferred,
         );
         await _socketService.sendMessage(chunkMessage);
 
@@ -495,7 +562,7 @@ class FileTransferServiceImpl implements FileTransferService {
 
         final updatedTransfer = fileTransfer.copyWith(
           bytesTransferred: bytesTransferred,
-          transferSpeed: speed.toDouble(),
+          transferSpeed: speed,
           status: FileTransferStatus.transferring,
         );
         _activeTransfers[transferId] = updatedTransfer;
@@ -528,23 +595,15 @@ class FileTransferServiceImpl implements FileTransferService {
           totalBytes: fileTransfer.fileSize,
           progress: updatedTransfer.progress,
         );
-        final success = await _socketService.sendMessage(progressMessage);
-        if (!success) {
-          throw Exception('发送文件传输进度消息失败');
-        }
+        await _socketService.sendMessage(progressMessage);
       }
 
       // 发送传输完成消息
       final completeMessage = SocketMessageModel.createFileTransferComplete(
         fileName: fileTransfer.fileName,
         filePath: fileTransfer.filePath,
-        fileSize: fileTransfer.fileSize,
-        fileHash: fileTransfer.fileHash,
       );
-      final success = await _socketService.sendMessage(completeMessage);
-      if (!success) {
-        throw Exception('发送文件传输完成消息失败');
-      }
+      await _socketService.sendMessage(completeMessage);
 
       // 更新状态为已完成
       final completedTransfer = fileTransfer.copyWith(
@@ -618,8 +677,6 @@ class FileTransferServiceImpl implements FileTransferService {
   void _handleFileTransferComplete(Map<String, dynamic> data) {
     final fileName = data['fileName'] as String;
     final filePath = data['filePath'] as String;
-    final fileSize = data['fileSize'] as int;
-    final fileHash = data['fileHash'] as String;
 
     final fileTransfer = _activeTransfers.values.firstWhere(
       (transfer) => transfer.fileName == fileName,
@@ -711,30 +768,5 @@ class FileTransferServiceImpl implements FileTransferService {
   void dispose() {
     _messageSubscription.cancel();
     _transferController.close();
-  }
-
-  /// 获取默认接收目录
-  Future<String> _getDefaultReceiveDirectory() async {
-    final homeDir =
-        Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
-    return '$homeDir/Downloads/Bifrost';
-  }
-
-  /// 处理文件传输错误
-  void _handleTransferError(String transferId, String errorMessage) {
-    final fileTransfer = _activeTransfers[transferId];
-    if (fileTransfer == null) {
-      _logger.warning('收到未知文件传输的错误消息: $transferId');
-      return;
-    }
-
-    // 更新状态为失败
-    final failedTransfer = fileTransfer.copyWith(
-      status: FileTransferStatus.failed,
-      errorMessage: errorMessage,
-      endTime: DateTime.now(),
-    );
-    _activeTransfers[transferId] = failedTransfer;
-    _notifyFileTransferUpdate(failedTransfer);
   }
 }
