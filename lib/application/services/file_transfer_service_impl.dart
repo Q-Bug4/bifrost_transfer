@@ -44,31 +44,34 @@ class FileTransferServiceImpl implements FileTransferService {
 
   /// 初始化接收目录
   void _initReceiveDirectory() {
+    _logger.info('开始初始化接收目录');
     String? baseDir;
     if (Platform.isWindows) {
       baseDir = Platform.environment['USERPROFILE'];
+      _logger.info('Windows系统，基础目录: $baseDir');
     } else {
       baseDir = Platform.environment['HOME'];
+      _logger.info('Unix系统，基础目录: $baseDir');
     }
 
     if (baseDir == null) {
       _logger.severe('无法获取用户主目录');
       baseDir = Directory.current.path;
+      _logger.info('使用当前目录作为备选: $baseDir');
     }
 
     _receiveDirectory = path.join(baseDir, 'Downloads', 'Bifrost');
-    _logger.info('初始化接收目录: $_receiveDirectory');
+    _logger.info('设置接收目录为: $_receiveDirectory');
 
-    try {
-      Directory(_receiveDirectory).createSync(recursive: true);
-      _logger.info('成功创建接收目录');
-    } catch (e) {
-      _logger.severe('创建接收目录失败: $e');
-      // 使用临时目录作为备选
-      _receiveDirectory = path.join(Directory.systemTemp.path, 'Bifrost');
-      Directory(_receiveDirectory).createSync(recursive: true);
-      _logger.info('使用临时目录作为备选: $_receiveDirectory');
+    final receiveDir = Directory(_receiveDirectory);
+    if (!receiveDir.existsSync()) {
+      _logger.info('接收目录不存在，创建目录');
+      receiveDir.createSync(recursive: true);
     }
+
+    _logger.info('接收目录初始化完成');
+    _logger.info('- 目录是否存在: ${receiveDir.existsSync()}');
+    _logger.info('- 完整路径: ${receiveDir.absolute.path}');
   }
 
   /// 格式化文件大小
@@ -327,25 +330,32 @@ class FileTransferServiceImpl implements FileTransferService {
 
   /// 处理文件传输请求
   void _handleFileTransferRequest(Map<String, dynamic> data) async {
+    _logger.info('收到文件传输请求，开始处理');
     final fileName = data['fileName'] as String;
     final fileSize = data['fileSize'] as int;
     final fileHash = data['fileHash'] as String;
 
+    _logger.info('请求信息:');
+    _logger.info('- 文件名: $fileName');
+    _logger.info('- 文件大小: ${_formatFileSize(fileSize)}');
+    _logger.info('- 文件哈希: $fileHash');
+    _logger.info('- 当前接收目录: $_receiveDirectory');
+
     // 使用 path.join 确保跨平台路径正确性
     final filePath = path.join(_receiveDirectory, fileName);
+    _logger.info('生成保存路径: $filePath');
 
     // 确保父目录存在
     final parentDir = Directory(path.dirname(filePath));
+    _logger.info('检查父目录: ${parentDir.path}');
     if (!parentDir.existsSync()) {
+      _logger.info('父目录不存在，创建目录');
       parentDir.createSync(recursive: true);
     }
+    _logger.info('父目录已就绪');
 
     final transferId = DateTime.now().millisecondsSinceEpoch.toString();
-
-    _logger.info('收到文件传输请求:');
-    _logger.info('- 文件名: $fileName');
-    _logger.info('- 文件大小: ${_formatFileSize(fileSize)}');
-    _logger.info('- 保存路径: $filePath');
+    _logger.info('生成传输ID: $transferId');
 
     // 创建文件传输模型
     final fileTransfer = FileTransferModel(
@@ -361,6 +371,7 @@ class FileTransferServiceImpl implements FileTransferService {
     // 添加到活跃传输列表
     _activeTransfers[transferId] = fileTransfer;
     _notifyFileTransferUpdate(fileTransfer);
+    _logger.info('文件传输请求处理完成，等待接收数据');
 
     // 自动接受文件传输请求
     _acceptFileTransfer(transferId);
@@ -429,10 +440,26 @@ class FileTransferServiceImpl implements FileTransferService {
   void _handleFileTransferData(Map<String, dynamic> data) async {
     final transferId = data['transferId'] as String;
     final fileName = data['fileName'] as String;
-    final fileTransfer = _activeTransfers[transferId];
+
+    _logger.info('收到文件传输数据:');
+    _logger.info('- 文件名: $fileName');
+    _logger.info('- 传输ID: $transferId');
+
+    // 首先尝试通过传输ID查找
+    var fileTransfer = _activeTransfers[transferId];
+
+    // 如果找不到，尝试通过文件名查找
     if (fileTransfer == null) {
-      _logger.warning('收到未知文件传输的数据: $transferId');
-      return;
+      _logger.warning('通过传输ID未找到文件传输: $transferId，尝试通过文件名查找');
+      try {
+        fileTransfer = _activeTransfers.values.firstWhere(
+          (transfer) => transfer.fileName == fileName,
+        );
+        _logger.info('通过文件名找到文件传输: ${fileTransfer.transferId}');
+      } catch (e) {
+        _logger.warning('收到未知文件传输的数据，无法通过ID或文件名找到: $transferId, $fileName');
+        return;
+      }
     }
 
     try {
@@ -440,51 +467,69 @@ class FileTransferServiceImpl implements FileTransferService {
       final updatedTransfer = fileTransfer.copyWith(
         status: FileTransferStatus.transferring,
       );
-      _activeTransfers[transferId] = updatedTransfer;
+      _activeTransfers[fileTransfer.transferId] = updatedTransfer;
       _notifyFileTransferUpdate(updatedTransfer);
 
       // 解码文件数据
       final fileData = base64.decode(data['data'] as String);
       final offset = data['offset'] as int;
 
-      _logger.info('接收文件数据:');
-      _logger.info('- 文件名: $fileName');
       _logger.info('- 偏移量: ${_formatFileSize(offset)}');
       _logger.info('- 数据大小: ${_formatFileSize(fileData.length)}');
+      _logger.info('- 保存路径: ${fileTransfer.filePath}');
+
+      // 确保父目录存在
+      final file = File(fileTransfer.filePath);
+      final parentDir = file.parent;
+      if (!parentDir.existsSync()) {
+        _logger.info('父目录不存在，创建目录: ${parentDir.path}');
+        parentDir.createSync(recursive: true);
+      }
 
       // 写入文件数据
-      final file = File(fileTransfer.filePath);
-      final raf = await file.open(mode: FileMode.write);
+      _logger.info('准备写入文件:');
+      _logger.info('- 完整路径: ${file.absolute.path}');
+
+      final raf = await file.open(mode: FileMode.writeOnlyAppend);
+      _logger.info('打开文件成功，准备写入数据');
       await raf.setPosition(offset);
       await raf.writeFrom(fileData);
       await raf.close();
+      _logger.info('文件写入完成');
 
       // 更新传输进度
       final now = DateTime.now();
       final duration = now.difference(fileTransfer.startTime).inSeconds;
       final speed = duration > 0 ? (offset + fileData.length) / duration : 0.0;
 
+      final newBytesTransferred = offset + fileData.length;
       final progressTransfer = updatedTransfer.copyWith(
-        bytesTransferred: offset + fileData.length,
+        bytesTransferred: newBytesTransferred,
         transferSpeed: speed,
       );
-      _activeTransfers[transferId] = progressTransfer;
-      _notifyFileTransferUpdate(progressTransfer);
+
+      // 检查是否传输完成
+      FileTransferStatus newStatus = FileTransferStatus.transferring;
+      if (newBytesTransferred >= fileTransfer.fileSize) {
+        newStatus = FileTransferStatus.completed;
+        _logger.info('文件数据传输完成，更新状态为已完成');
+      }
+
+      final finalTransfer = progressTransfer.copyWith(
+        status: newStatus,
+        endTime:
+            newStatus == FileTransferStatus.completed ? DateTime.now() : null,
+      );
+      _activeTransfers[fileTransfer.transferId] = finalTransfer;
+      _notifyFileTransferUpdate(finalTransfer);
 
       // 如果传输完成，发送完成消息
-      if (progressTransfer.bytesTransferred >= progressTransfer.fileSize) {
+      if (newStatus == FileTransferStatus.completed) {
         final completeMessage = SocketMessageModel.createFileTransferComplete(
           fileName: fileName,
           filePath: fileTransfer.filePath,
         );
         await _socketService.sendMessage(completeMessage);
-
-        final completedTransfer = progressTransfer.copyWith(
-          status: FileTransferStatus.completed,
-          endTime: DateTime.now(),
-        );
-        _activeTransfers[transferId] = completedTransfer;
-        _notifyFileTransferUpdate(completedTransfer);
 
         _logger.info('文件接收完成:');
         _logger.info('- 文件名: $fileName');
@@ -496,6 +541,7 @@ class FileTransferServiceImpl implements FileTransferService {
       _logger.severe('处理文件数据失败:');
       _logger.severe('- 文件名: $fileName');
       _logger.severe('- 错误信息: $e');
+      _logger.severe('- 堆栈: ${StackTrace.current}');
 
       // 更新状态为失败
       final failedTransfer = fileTransfer.copyWith(
@@ -678,19 +724,74 @@ class FileTransferServiceImpl implements FileTransferService {
     final fileName = data['fileName'] as String;
     final filePath = data['filePath'] as String;
 
-    final fileTransfer = _activeTransfers.values.firstWhere(
-      (transfer) => transfer.fileName == fileName,
-      orElse: () => throw Exception('未找到对应的文件传输：$fileName'),
-    );
+    _logger.info('收到文件传输完成消息:');
+    _logger.info('- 文件名: $fileName');
+    _logger.info('- 文件路径: $filePath');
 
-    // 更新状态为已完成
-    final completedTransfer = fileTransfer.copyWith(
-      status: FileTransferStatus.completed,
-      bytesTransferred: fileTransfer.fileSize,
-      endTime: DateTime.now(),
-    );
-    _activeTransfers[fileTransfer.transferId] = completedTransfer;
-    _notifyFileTransferUpdate(completedTransfer);
+    FileTransferModel? fileTransfer;
+    try {
+      fileTransfer = _activeTransfers.values.firstWhere(
+        (transfer) => transfer.fileName == fileName,
+      );
+    } catch (e) {
+      _logger.warning('未找到对应的文件传输：$fileName，创建新的传输记录');
+      // 如果找不到对应的传输记录，可能是因为传输ID不匹配，我们创建一个新的记录
+      final transferId = DateTime.now().millisecondsSinceEpoch.toString();
+      fileTransfer = FileTransferModel(
+        transferId: transferId,
+        fileName: fileName,
+        filePath: path.join(_receiveDirectory, fileName),
+        fileSize: 0, // 假设为空文件
+        fileHash: '',
+        status: FileTransferStatus.waiting,
+        direction: FileTransferDirection.receiving,
+      );
+      _activeTransfers[transferId] = fileTransfer;
+    }
+
+    try {
+      // 确保文件存在，即使是空文件
+      final file = File(fileTransfer.filePath);
+      if (!file.existsSync()) {
+        _logger.info('文件不存在，创建空文件: ${fileTransfer.filePath}');
+        // 确保父目录存在
+        final parentDir = file.parent;
+        if (!parentDir.existsSync()) {
+          _logger.info('父目录不存在，创建目录: ${parentDir.path}');
+          parentDir.createSync(recursive: true);
+        }
+        file.createSync(recursive: true);
+      }
+
+      // 更新状态为已完成
+      final completedTransfer = fileTransfer.copyWith(
+        status: FileTransferStatus.completed,
+        bytesTransferred: fileTransfer.fileSize,
+        endTime: DateTime.now(),
+      );
+      _activeTransfers[fileTransfer.transferId] = completedTransfer;
+      _notifyFileTransferUpdate(completedTransfer);
+
+      _logger.info('文件传输完成:');
+      _logger.info('- 文件名: $fileName');
+      _logger.info('- 文件路径: ${fileTransfer.filePath}');
+      _logger.info('- 文件大小: ${_formatFileSize(fileTransfer.fileSize)}');
+    } catch (e) {
+      _logger.severe('处理文件传输完成消息失败:');
+      _logger.severe('- 文件名: $fileName');
+      _logger.severe('- 错误信息: $e');
+
+      // 更新状态为失败
+      if (fileTransfer != null) {
+        final failedTransfer = fileTransfer.copyWith(
+          status: FileTransferStatus.failed,
+          errorMessage: e.toString(),
+          endTime: DateTime.now(),
+        );
+        _activeTransfers[fileTransfer.transferId] = failedTransfer;
+        _notifyFileTransferUpdate(failedTransfer);
+      }
+    }
   }
 
   /// 处理文件传输取消

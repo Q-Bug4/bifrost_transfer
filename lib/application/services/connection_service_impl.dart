@@ -376,6 +376,7 @@ class ConnectionServiceImpl implements ConnectionService {
         break;
       case SocketMessageType.FILE_TRANSFER_REQUEST:
       case SocketMessageType.FILE_TRANSFER_RESPONSE:
+      case SocketMessageType.FILE_TRANSFER_DATA:
       case SocketMessageType.FILE_TRANSFER_PROGRESS:
       case SocketMessageType.FILE_TRANSFER_COMPLETE:
       case SocketMessageType.FILE_TRANSFER_RESUME:
