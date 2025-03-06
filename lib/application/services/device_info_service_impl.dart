@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
 import '../models/device_info_model.dart';
 import 'device_info_service.dart';
+import '../../infrastructure/utils/network_utils.dart';
 
 /// 设备信息服务实现
 class DeviceInfoServiceImpl implements DeviceInfoService {
@@ -32,20 +33,8 @@ class DeviceInfoServiceImpl implements DeviceInfoService {
         deviceName = linuxInfo.prettyName;
       }
 
-      // 获取IP地址
-      final interfaces = await NetworkInterface.list(
-        includeLoopback: false,
-        type: InternetAddressType.IPv4,
-      );
-
-      if (interfaces.isNotEmpty) {
-        for (var interface in interfaces) {
-          if (interface.addresses.isNotEmpty) {
-            ipAddress = interface.addresses.first.address;
-            break;
-          }
-        }
-      }
+      // 使用 NetworkUtils 获取IP地址
+      ipAddress = await NetworkUtils.getLocalIpAddress();
     } catch (e) {
       // 出错时使用默认值
       print('获取设备信息失败: $e');
